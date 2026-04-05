@@ -25,11 +25,7 @@ export function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/dashboard");
-    }, 1000);
+    window.location.href = "http://localhost:8000/auth/google/";
   };
 
   return (

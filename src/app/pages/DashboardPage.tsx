@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import {
   BarChart,
   Bar,
@@ -412,6 +413,25 @@ function GestaoTab() {
 
 export function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabId>("empresa");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const access = searchParams.get("access");
+    const refresh = searchParams.get("refresh");
+    const papel = searchParams.get("papel");
+
+    if (error) {
+      alert(`Erro no login com Google: ${error}`);
+      setSearchParams({});
+    } else if (access) {
+      localStorage.setItem("sysmerenda_access", access);
+      localStorage.setItem("sysmerenda_refresh", refresh || "");
+      localStorage.setItem("sysmerenda_papel", papel || "");
+      
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   return (
     <div className="p-6 space-y-5">
