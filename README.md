@@ -1,6 +1,6 @@
 # SysMerenda - Sistema de Controle de Acesso e Refeições
 
-Um sistema web completo e responsivo projetado para controle de acesso e monitoramento de vouchers de refeição em escolas públicas. O sistema foca na validação biométrica rápida para cantinas, além de fornecer dashboards e relatórios detalhados para a gestão escolar, fiscais da prefeitura e empresa contratada.
+Um sistema web completo e responsivo projetado para controle de acesso e monitoramento de vouchers de refeição em escolas públicas. O sistema foca na validação biométrica rápida para cantinas, além de fornecer dashboards e relatórios detalhados para a gestão escolar, fiscais e empresa contratada.
 
 ## 🚀 Principais Funcionalidades
 
@@ -38,3 +38,10 @@ Este projeto foi construído com ferramentas modernas do ecossistema front-end:
    ```bash
    git clone [https://github.com/SEU_USUARIO/sistema-controle.git](https://github.com/SEU_USUARIO/sistema-controle.git)
    cd sistema-controle
+
+#
+
+## 👥 Equipe
+
+* **Front-end:** Natália Martins (https://github.com/nataliamartinsux)
+* **Back-end:** Leticia Vieira (https://github.com/lelevs1)
