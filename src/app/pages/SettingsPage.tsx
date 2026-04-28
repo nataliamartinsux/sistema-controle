@@ -49,7 +49,7 @@ export function SettingsPage() {
   const [alertBeforeMinutes, setAlertBeforeMinutes] = useState("15");
 
   // New user form
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "Operador" as Role });
+  const [newUser, setNewUser] = useState({ nome: "", email: "", role: "Operador" as Role });
   const [editRole, setEditRole] = useState<Role>("Operador");
 
   const handleSave = () => {
@@ -58,17 +58,17 @@ export function SettingsPage() {
   };
 
   const handleAddUser = () => {
-    if (!newUser.name || !newUser.email) return;
+    if (!newUser.nome || !newUser.email) return;
     const user: User = {
       id: `u${Date.now()}`,
-      name: newUser.name,
+      nome: newUser.nome,
       email: newUser.email,
       role: newUser.role,
       status: "Ativo",
       lastAccess: "Nunca",
     };
     setUsers((prev) => [...prev, user]);
-    setNewUser({ name: "", email: "", role: "Operador" });
+    setNewUser({ nome: "", email: "", role: "Operador" });
     setShowAddUser(false);
   };
 
@@ -345,8 +345,8 @@ export function SettingsPage() {
             <div className="flex flex-wrap gap-3">
               <input
                 type="text"
-                value={newUser.name}
-                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                value={newUser.nome}
+                onChange={(e) => setNewUser({ ...newUser, nome: e.target.value })}
                 placeholder="Nome completo"
                 className="flex-1 min-w-40 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
@@ -366,7 +366,7 @@ export function SettingsPage() {
               </select>
               <button
                 onClick={handleAddUser}
-                disabled={!newUser.name || !newUser.email}
+                disabled={!newUser.nome || !newUser.email}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-semibold"
               >
                 Adicionar
@@ -400,9 +400,9 @@ export function SettingsPage() {
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 text-xs font-bold flex-shrink-0">
-                        {user.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                        {user.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                       </div>
-                      <span className="text-sm text-gray-700 font-medium">{user.name}</span>
+                      <span className="text-sm text-gray-700 font-medium">{user.nome}</span>
                     </div>
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-500">{user.email}</td>
