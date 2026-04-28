@@ -27,6 +27,7 @@ interface ConsumedRecord {
 
 export function CanteenPage() {
   const [state, setState] = useState<CanteenState>("idle");
+  const [hexCode, setHexCode] = useState("");
   const [blockReason, setBlockReason] = useState<BlockReason>("Refeição já consumida hoje");
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -109,6 +110,24 @@ export function CanteenPage() {
     showNotification("📋 Ocorrência registrada com sucesso");
   };
 
+  const handleHexSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hexCode) return;
+    
+    // Busca o aluno que tem esse código biométrico cadastrado
+    const student = STUDENTS.find(s => 
+      s.biometricCodes.includes(hexCode.toUpperCase())
+    );
+    
+    if (student) {
+      simulateSuccess(student);
+    } else {
+      simulateBlock("Biometria não cadastrada");
+    }
+    
+    setHexCode(""); // Limpa o campo após a leitura
+  };
+
   return (
     <div className="min-h-full flex flex-col">
       {/* Notification */}
@@ -151,16 +170,31 @@ export function CanteenPage() {
         {/* IDLE STATE */}
         {state === "idle" && (
           <div className="text-center">
-            <div className="relative inline-flex items-center justify-center mb-8">
+            <div className="relative inline-flex items-center justify-center mb-6">
               <div className="absolute w-48 h-48 bg-slate-200 rounded-full animate-ping opacity-20" />
               <div className="absolute w-36 h-36 bg-slate-300 rounded-full animate-pulse opacity-30" />
               <div className="relative w-40 h-40 bg-white rounded-full shadow-2xl flex items-center justify-center border-4 border-slate-200">
                 <Fingerprint className="w-20 h-20 text-slate-400" strokeWidth={1.5} />
               </div>
             </div>
-            <h2 className="text-slate-700 text-4xl font-bold mb-3">Aguardando Leitura</h2>
-            <p className="text-slate-500 text-xl">Aproxime o dedo ao leitor biométrico</p>
-            <p className="text-slate-400 text-base mt-2">Horário de funcionamento: 07:00 – 14:00</p>
+            
+            <h2 className="text-slate-700 text-4xl font-bold mb-2">Aguardando Leitura</h2>
+            <p className="text-slate-500 text-xl mb-6">Aproxime o dedo ou insira a biometria</p>
+            
+            {/* NOVO: Formulário de Input Hexadecimal */}
+            <form onSubmit={handleHexSubmit} className="max-w-xs mx-auto mb-6">
+              <input
+                type="text"
+                value={hexCode}
+                onChange={(e) => setHexCode(e.target.value)}
+                placeholder="Código da biometria"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-xl font-mono uppercase focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-center"
+                autoFocus
+              />
+              <button type="submit" className="hidden">Enviar</button>
+            </form>
+
+            <p className="text-slate-400 text-base">Horário de funcionamento: 07:00 – 14:00</p>
           </div>
         )}
 
