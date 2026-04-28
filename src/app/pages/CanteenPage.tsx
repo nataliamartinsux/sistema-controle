@@ -110,13 +110,10 @@ export function CanteenPage() {
     showNotification("📋 Ocorrência registrada com sucesso");
   };
 
-  const handleHexSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!hexCode) return;
-    
-    // Busca o aluno que tem esse código biométrico cadastrado
+  // Função central para processar o código
+  const processHexCode = (code: string) => {
     const student = STUDENTS.find(s => 
-      s.biometricCodes.includes(hexCode.toUpperCase())
+      s.biometricCodes.includes(code.toUpperCase())
     );
     
     if (student) {
@@ -126,6 +123,22 @@ export function CanteenPage() {
     }
     
     setHexCode(""); // Limpa o campo após a leitura
+  };
+
+  const handleHexSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (hexCode) processHexCode(hexCode);
+  };
+
+  // Função que escuta a digitação e envia automaticamente
+  const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setHexCode(value);
+
+    // Se atingir exatamente 1024 caracteres, dispara a validação
+    if (value.length === 1024) {
+      processHexCode(value);
+    }
   };
 
   return (
@@ -181,13 +194,14 @@ export function CanteenPage() {
             <h2 className="text-slate-700 text-4xl font-bold mb-2">Aguardando Leitura</h2>
             <p className="text-slate-500 text-xl mb-6">Aproxime o dedo ou insira a biometria</p>
             
-            {/* NOVO: Formulário de Input Hexadecimal */}
+            {/* Formulário de Input Hexadecimal */}
             <form onSubmit={handleHexSubmit} className="max-w-xs mx-auto mb-6">
               <input
                 type="text"
                 value={hexCode}
-                onChange={(e) => setHexCode(e.target.value)}
-                placeholder="Código da biometria"
+                onChange={handleHexChange}
+                maxLength={1024}           /* <-- Limite máximo para evitar bugs */
+                placeholder="Código da digital..."
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-xl font-mono uppercase focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-center"
                 autoFocus
               />
