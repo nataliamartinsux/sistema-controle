@@ -38,7 +38,7 @@ export function CanteenPage() {
   const [occurrenceType, setOccurrenceType] = useState("");
   const [occurrenceDesc, setOccurrenceDesc] = useState("");
   const [consumedToday, setConsumedToday] = useState<ConsumedRecord[]>(
-    MEAL_RECORDS_TODAY.map((r) => ({ studentId: r.studentId, time: r.time }))
+    MEAL_RECORDS_TODAY.map((r) => ({ studentId: r.alunoId, time: r.time }))
   );
   const [readerOnline, setReaderOnline] = useState(true);
   const [successCount, setSuccessCount] = useState(MEAL_RECORDS_TODAY.length);
@@ -61,7 +61,7 @@ export function CanteenPage() {
   };
 
   const simulateSuccess = (student?: Student) => {
-    const s = student || STUDENTS.find((s) => !consumedToday.find((c) => c.studentId === s.id) && s.status === "Ativo");
+    const s = student || STUDENTS.find((s) => !consumedToday.find((c) => c.studentId === s.id) && s.ativo);
     if (!s) {
       simulateBlock("Refeição já consumida hoje");
       return;
@@ -77,7 +77,7 @@ export function CanteenPage() {
   const simulateBlock = (reason: BlockReason) => {
     const student = STUDENTS.find((s) => {
       if (reason === "Refeição já consumida hoje") return consumedToday.find((c) => c.studentId === s.id);
-      if (reason === "Aluno Inativo") return s.status === "Inativo";
+      if (reason === "Aluno Inativo") return !s.ativo;
       return true;
     });
     setState("blocked");
@@ -88,8 +88,8 @@ export function CanteenPage() {
 
   const filteredStudents = STUDENTS.filter(
     (s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.registration.includes(searchQuery)
+      s.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.matricula.includes(searchQuery)
   );
 
   const handleManualRelease = () => {
@@ -99,7 +99,7 @@ export function CanteenPage() {
     setSelectedStudent(null);
     setManualReason("");
     setSearchQuery("");
-    showNotification(`✅ Liberação manual registrada para ${selectedStudent.name}`);
+    showNotification(`✅ Liberação manual registrada para ${selectedStudent.nome}`);
   };
 
   const handleOccurrence = () => {
@@ -228,19 +228,19 @@ export function CanteenPage() {
               <div className="p-8 flex items-center gap-6">
                 <div className="w-28 h-28 rounded-2xl overflow-hidden border-3 border-emerald-200 shadow-md flex-shrink-0">
                   <ImageWithFallback
-                    src={currentStudent.photo}
-                    alt={currentStudent.name}
+                    src={currentStudent.foto}
+                    alt={currentStudent.nome}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div>
-                  <p className="text-gray-800 text-3xl font-bold leading-tight">{currentStudent.name}</p>
+                  <p className="text-gray-800 text-3xl font-bold leading-tight">{currentStudent.nome}</p>
                   <div className="mt-2 space-y-1">
                     <p className="text-gray-500 text-lg">
-                      <span className="font-medium text-gray-700">Matrícula:</span> {currentStudent.registration}
+                      <span className="font-medium text-gray-700">Matrícula:</span> {currentStudent.matricula}
                     </p>
                     <p className="text-gray-500 text-lg">
-                      <span className="font-medium text-gray-700">Turma:</span> {currentStudent.grade}
+                      <span className="font-medium text-gray-700">Turma:</span> {currentStudent.serie}
                     </p>
                     <p className="text-emerald-600 text-base font-medium flex items-center gap-1">
                       <Fingerprint className="w-4 h-4" />
@@ -278,14 +278,14 @@ export function CanteenPage() {
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-red-200 shadow flex-shrink-0 opacity-70">
                       <ImageWithFallback
-                        src={currentStudent.photo}
-                        alt={currentStudent.name}
+                        src={currentStudent.foto}
+                        alt={currentStudent.nome}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div>
-                      <p className="text-gray-700 text-2xl font-bold">{currentStudent.name}</p>
-                      <p className="text-gray-500 text-base">{currentStudent.registration} • {currentStudent.grade}</p>
+                      <p className="text-gray-700 text-2xl font-bold">{currentStudent.nome}</p>
+                      <p className="text-gray-500 text-base">{currentStudent.matricula} • {currentStudent.serie}</p>
                     </div>
                   </div>
                 )}
@@ -364,7 +364,7 @@ export function CanteenPage() {
                   <User className="w-3 h-3 text-white" />
                 </div>
                 <span className="text-white text-xs font-medium">
-                  {student ? student.name.split(" ")[0] : "Aluno"}
+                  {student ? student.nome.split(" ")[0] : "Aluno"}
                 </span>
                 <span className="text-slate-400 text-xs">{record.time}</span>
               </div>
@@ -410,11 +410,11 @@ export function CanteenPage() {
                           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl border border-gray-200 transition-colors text-left"
                         >
                           <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-                            <ImageWithFallback src={student.photo} alt={student.name} className="w-full h-full object-cover" />
+                            <ImageWithFallback src={student.foto} alt={student.nome} className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-gray-800 font-medium text-sm truncate">{student.name}</p>
-                            <p className="text-gray-500 text-xs">{student.registration} • {student.grade}</p>
+                            <p className="text-gray-800 font-medium text-sm truncate">{student.nome}</p>
+                            <p className="text-gray-500 text-xs">{student.matricula} • {student.serie}</p>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {alreadyConsumed && (
@@ -422,7 +422,7 @@ export function CanteenPage() {
                                 Já comeu
                               </span>
                             )}
-                            {student.status === "Inativo" && (
+                            {!student.ativo && (
                               <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
                                 Inativo
                               </span>
@@ -445,13 +445,13 @@ export function CanteenPage() {
                   {/* Selected student confirmation */}
                   <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 mb-5">
                     <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-slate-200 flex-shrink-0">
-                      <ImageWithFallback src={selectedStudent.photo} alt={selectedStudent.name} className="w-full h-full object-cover" />
+                      <ImageWithFallback src={selectedStudent.foto} alt={selectedStudent.nome} className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <p className="text-gray-800 text-base font-bold">{selectedStudent.name}</p>
-                      <p className="text-gray-500 text-sm">{selectedStudent.registration} • {selectedStudent.grade}</p>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full mt-1 inline-block ${selectedStudent.status === "Ativo" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-                        {selectedStudent.status}
+                      <p className="text-gray-800 text-base font-bold">{selectedStudent.nome}</p>
+                      <p className="text-gray-500 text-sm">{selectedStudent.matricula} • {selectedStudent.serie}</p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full mt-1 inline-block ${selectedStudent.ativo ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                        {selectedStudent.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </div>
                     <button onClick={() => setSelectedStudent(null)} className="ml-auto text-gray-400 hover:text-gray-600">
