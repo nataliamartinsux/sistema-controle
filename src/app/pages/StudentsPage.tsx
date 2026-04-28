@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { Badge } from "../components/ui/badge";
 import { STUDENTS, type Student, type StudentStatus } from "../mockData";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
@@ -31,67 +32,85 @@ export function StudentsPage() {
   const [showBiometricCodes, setShowBiometricCodes] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
-    name: "",
-    registration: "",
-    grade: "",
-    status: "Ativo" as StudentStatus,
-    bio1: "",
-    bio2: "",
-    bio3: "",
+  nome: "",
+  matricula: "",
+  data_nascimento: "",
+  serie: "",
+  curso: "",
+  turma: "",
+  ativo: true,
+  bio1: "",
+  bio2: "",
+  bio3: "",
+  photoPreview: "",
+  foto: null as File | null,
+});
+
+const openAdd = () => {
+  setEditingStudent(null);
+  setFormData({
+    nome: "", matricula: "", data_nascimento: "", serie: "", 
+    curso: "", turma: "", ativo: true, bio1: "", bio2: "", 
+    bio3: "", photoPreview: "", foto: null 
   });
+  setShowModal(true);
+};
 
   const ITEMS_PER_PAGE = 6;
 
   const filtered = students.filter((s) => {
     const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.registration.includes(search);
-    const matchStatus = filterStatus ? s.status === filterStatus : true;
-    const matchGrade = filterGrade ? s.grade === filterGrade : true;
+      s.nome.toLowerCase().includes(search.toLowerCase()) ||
+      s.matricula.includes(search);
+    const matchStatus = filterStatus === "Ativo" ? s.ativo === true : 
+                        filterStatus === "Inativo" ? s.ativo === false : true;
+    const matchGrade = filterGrade ? s.serie === filterGrade : true;
     return matchSearch && matchStatus && matchGrade;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const openAdd = () => {
-    setEditingStudent(null);
-    setFormData({ name: "", registration: "", grade: "", status: "Ativo", bio1: "", bio2: "", bio3: "" });
-    setShowModal(true);
-  };
-
   const openEdit = (student: Student) => {
     setEditingStudent(student);
     setFormData({
-      name: student.name,
-      registration: student.registration,
-      grade: student.grade,
-      status: student.status,
+      nome: student.nome,
+      matricula: student.matricula,
+      data_nascimento: student.data_nascimento,
+      serie: student.serie,
+      curso: student.curso || "",
+      turma: student.turma || "",
+      ativo: student.ativo,
       bio1: student.biometricCodes[0],
       bio2: student.biometricCodes[1],
       bio3: student.biometricCodes[2],
+      photoPreview: student.foto || "",
+      foto: null,
     });
     setShowModal(true);
   };
 
   const handleSave = () => {
-    if (!formData.name || !formData.registration || !formData.grade) return;
+    if (!formData.nome || !formData.matricula || !formData.serie) return;
     if (editingStudent) {
       setStudents((prev) =>
         prev.map((s) =>
           s.id === editingStudent.id
-            ? { ...s, name: formData.name, registration: formData.registration, grade: formData.grade, status: formData.status, biometricCodes: [formData.bio1, formData.bio2, formData.bio3] }
+            ? { ...s, nome: formData.nome, matricula: formData.matricula, data_nascimento: formData.data_nascimento, serie: formData.serie, curso: formData.curso, turma: formData.turma, ativo: formData.ativo, biometricCodes: [formData.bio1, formData.bio2, formData.bio3] }
             : s
         )
       );
     } else {
       const newStudent: Student = {
         id: String(Date.now()),
-        name: formData.name,
-        registration: formData.registration,
-        grade: formData.grade,
-        status: formData.status,
-        photo: "https://images.unsplash.com/photo-1681070909604-f555aa006564?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400",
+        nome: formData.nome,
+        matricula: formData.matricula,
+        data_nascimento: formData.data_nascimento,
+        serie: formData.serie,
+        curso: formData.curso,
+        turma: formData.turma,
+        ativo: formData.ativo,
+        foto: "https://images.unsplash.com/photo-1681070909604-f555aa006564?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400",
         biometricCodes: [formData.bio1 || "A0000000", formData.bio2 || "B0000000", formData.bio3 || "C0000000"],
         hasConsumedToday: false,
       };
@@ -106,10 +125,25 @@ export function StudentsPage() {
     }
   };
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ 
+          ...prev, 
+          photoPreview: reader.result as string,
+          foto: file // Campo que o backend espera 
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const toggleStatus = (id: string) => {
     setStudents((prev) =>
       prev.map((s) =>
-        s.id === id ? { ...s, status: s.status === "Ativo" ? "Inativo" : "Ativo" } : s
+        s.id === id ? { ...s, ativo: !s.ativo } : s
       )
     );
   };
@@ -121,7 +155,7 @@ export function StudentsPage() {
         <div>
           <h1 className="text-gray-900 text-2xl font-bold">Gestão de Alunos</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {students.length} alunos cadastrados • {students.filter((s) => s.status === "Ativo").length} ativos
+            {students.length} alunos cadastrados • {students.filter((s) => s.ativo).length} ativos
           </p>
         </div>
         <div className="flex gap-2">
@@ -196,32 +230,35 @@ export function StudentsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginated.map((student) => (
-                <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
-                      <ImageWithFallback src={student.photo} alt={student.name} className="w-full h-full object-cover" />
+                <tr key={student.id} className="group hover:bg-gray-50/50 transition-colors border-b border-gray-100">
+                  
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-100">
+                        <ImageWithFallback
+                          src={student.foto} 
+                          alt={student.nome} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{student.nome}</p>
+                        <p className="text-xs text-gray-500">{student.matricula}</p>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <p className="text-gray-800 text-sm font-medium">{student.name}</p>
+
+                  <td className="p-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-gray-700 font-medium">{student.serie}</span>
+                      <span className="text-xs text-gray-400">{student.turma || 'Sem turma'}</span>
+                    </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <p className="text-gray-600 text-sm font-mono">{student.registration}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-gray-600 text-sm">{student.grade}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleStatus(student.id)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                        student.status === "Ativo"
-                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                          : "bg-red-100 text-red-700 hover:bg-red-200"
-                      }`}
-                    >
-                      {student.status}
-                    </button>
+
+                  <td className="p-4">
+                    <Badge variant={student.ativo ? "success" : "secondary"} className="rounded-full font-medium">
+                      {student.ativo ? "Ativo" : "Inativo"}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -319,10 +356,11 @@ export function StudentsPage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Nome do aluno"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    required
+                    value={formData.nome}
+                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="Nome completo"
                   />
                 </div>
                 <div>
@@ -331,43 +369,65 @@ export function StudentsPage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.registration}
-                    onChange={(e) => setFormData({ ...formData, registration: e.target.value })}
-                    placeholder="2024XXX"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 font-mono"
+                    required
+                    value={formData.matricula}
+                    onChange={(e) => setFormData({ ...formData, matricula: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="Número da matrícula"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Turma <span className="text-red-500">*</span>
+                    Data de Nascimento <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={formData.grade}
-                    onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
-                  >
-                    <option value="">Selecionar...</option>
-                    {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <input
+                    type="date"
+                    required
+                    value={formData.data_nascimento}
+                    onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Série (Ano) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.serie}
+                    onChange={(e) => setFormData({ ...formData, serie: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="Ex: 7EF"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    value={formData.curso}
+                    onChange={(e) => setFormData({ ...formData, curso: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="Curso"
+                  />
+                  <input
+                    type="text"
+                    value={formData.turma}
+                    onChange={(e) => setFormData({ ...formData, turma: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="Turma"
+                  />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
                   <div className="flex gap-3">
                     {(["Ativo", "Inativo"] as StudentStatus[]).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, status: s })}
-                        className={`flex-1 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
-                          formData.status === s
-                            ? s === "Ativo"
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                              : "border-red-400 bg-red-50 text-red-700"
-                            : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                        }`}
-                      >
-                        {s}
-                      </button>
+                      <select
+                        value={formData.ativo ? "true" : "false"}
+                        onChange={(e) => setFormData({ ...formData, ativo: e.target.value === "true" })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                        <option value="true">Ativo</option>
+                        <option value="false">Inativo</option>
+                      </select>
                     ))}
                   </div>
                 </div>
@@ -426,7 +486,7 @@ export function StudentsPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={!formData.name || !formData.registration || !formData.grade}
+                disabled={!formData.nome || !formData.matricula || !formData.serie}
                 className="flex-1 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold"
               >
                 {editingStudent ? "Salvar Alterações" : "Cadastrar Aluno"}
@@ -455,8 +515,8 @@ export function StudentsPage() {
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-sm font-semibold text-gray-700 mb-2">Formato esperado do CSV:</p>
                 <pre className="text-xs text-gray-500 font-mono bg-white border border-gray-200 rounded-lg p-3">
-nome,matricula,turma,status,digital1,digital2,digital3{"\n"}
-João Silva,2024010,9A,Ativo,A3F8C2D1,B7E4A9F2,C1D6B3E8
+                  nome,matricula,turma,status,digital1,digital2,digital3{"\n"}
+                  João Silva,2024010,9A,Ativo,A3F8C2D1,B7E4A9F2,C1D6B3E8
                 </pre>
               </div>
               <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
