@@ -151,24 +151,22 @@ export function CanteenPage() {
       )}
 
       {/* Header Bar */}
-      <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${readerOnline ? "bg-emerald-900/50 text-emerald-300" : "bg-red-900/50 text-red-300"}`}>
-            {readerOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-            Leitor Biométrico: {readerOnline ? "Online" : "Offline"}
+        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
+          {/* O relógio na esquerda */}
+          <div className="flex items-center gap-3 text-white">
+            <Clock className="w-5 h-5 text-emerald-500" />
+            <span className="text-xl font-mono font-bold tracking-tight">{currentTime}</span>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-white">
-            <Clock className="w-4 h-4 text-slate-400" />
-            <span className="text-lg font-mono font-bold">{currentTime}</span>
-          </div>
+
+          {/* O contador de refeições na direita */}
           <div className="text-right">
-            <p className="text-slate-400 text-xs">Refeições hoje</p>
-            <p className="text-emerald-400 text-xl font-bold">{successCount}</p>
+            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">Refeições hoje</p>
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-emerald-400 text-2xl font-black">{successCount}</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Main Area */}
       <div
