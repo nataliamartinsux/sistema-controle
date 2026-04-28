@@ -91,6 +91,17 @@ export function SettingsPage() {
     setEditingUser(null);
   };
 
+  const [diasUteis, setDiasUteis] = useState(() => {
+    const salvo = localStorage.getItem('sysmerenda_dias_uteis');
+    return salvo ? parseInt(salvo) : 22;
+  });
+
+  const handleSaveDias = (valor: string) => {
+    const n = parseInt(valor) || 0;
+    setDiasUteis(n);
+    localStorage.setItem('sysmerenda_dias_uteis', n.toString());
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -102,6 +113,29 @@ export function SettingsPage() {
         <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
           <Shield className="w-4 h-4" />
           Perfil: Admin
+        </div>
+      </div>
+
+      {/* Parâmetros de Cálculo */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-gray-800 font-semibold">Parâmetros de Cálculo</h2>
+        </div>
+        <div className="p-6">
+          <div className="max-w-xs">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Dias Letivos (Mês Atual)
+            </label>
+            <input
+              type="number"
+              value={diasUteis}
+              onChange={(e) => handleSaveDias(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              min="1"
+              max="31"
+            />
+            <p className="text-gray-400 text-xs mt-1">Usado para projeções no Dashboard.</p>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router";
 import {
   BarChart,
@@ -153,8 +153,8 @@ function EmpresaTab() {
             <tbody className="divide-y divide-gray-100">
               {MEAL_RECORDS_TODAY.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-700 font-medium">{r.studentName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{r.grade}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700 font-medium">{r.nome}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{r.serie}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{r.time}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
@@ -373,8 +373,8 @@ function GestaoTab() {
                     <span className="text-xs text-gray-400 flex-shrink-0">{occ.date} {occ.time}</span>
                   </div>
                   <p className="text-gray-600 text-xs mt-1 leading-relaxed">{occ.description}</p>
-                  {occ.studentName && (
-                    <p className="text-gray-400 text-xs mt-1">Aluno: {occ.studentName}</p>
+                  {occ.nome && (
+                    <p className="text-gray-400 text-xs mt-1">Aluno: {occ.nome}</p>
                   )}
                   <p className="text-gray-400 text-xs">Operador: {occ.operator}</p>
                 </div>
@@ -414,6 +414,11 @@ function GestaoTab() {
 export function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabId>("empresa");
   const [searchParams, setSearchParams] = useSearchParams();
+  // Lê o valor que foi definido lá na SettingsPage
+  const diasUteis = parseInt(localStorage.getItem('sysmerenda_dias_uteis') || '22');
+  // Exemplo de uso no cálculo:
+  const totalAlunos = 520;
+  const metaMensal = totalAlunos * diasUteis;
 
   useEffect(() => {
     const error = searchParams.get("error");
