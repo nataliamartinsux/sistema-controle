@@ -140,6 +140,57 @@ const openAdd = () => {
     }
   };
 
+  // Função para importar o CSV
+  const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      
+      // Quebra o texto por linhas e remove linhas vazias
+      const rows = text.split('\n').filter(row => row.trim() !== '');
+      
+      if (rows.length < 2) {
+        alert("O arquivo CSV está vazio ou inválido.");
+        return;
+      }
+
+      // Ignora o cabeçalho (linha 0) e mapeia os dados
+      // O backend espera: nome, matricula, data_nascimento, serie
+      const importedStudents: Student[] = rows.slice(1).map((row, index) => {
+        // Divide as colunas separadas por vírgula
+        const [nome, matricula, data_nascimento, serie, curso, turma] = row.split(',');
+
+        return {
+          id: `import-${Date.now()}-${index}`, // ID provisório
+          nome: nome?.trim() || "Sem Nome",
+          matricula: matricula?.trim() || `SEM-MAT-${index}`,
+          data_nascimento: data_nascimento?.trim() || "2010-01-01",
+          serie: serie?.trim() || "",
+          curso: curso?.trim() || "",
+          turma: turma?.trim() || "",
+          ativo: true,
+          foto: "", // Fotos não vêm no CSV
+          biometricCodes: [], // Biometria será cadastrada depois
+          hasConsumedToday: false,
+        };
+      });
+
+      // Adiciona os alunos novos na lista existente
+      setStudents(prev => [...prev, ...importedStudents]);
+      alert(`${importedStudents.length} alunos importados com sucesso!`);
+      setShowImportModal(false);
+      
+      // Limpa o input para permitir enviar o mesmo arquivo de novo se precisar
+      e.target.value = ''; 
+    };
+
+    // Lê o arquivo como texto
+    reader.readAsText(file);
+  };
+
   const toggleStatus = (id: string) => {
     setStudents((prev) =>
       prev.map((s) =>
@@ -507,35 +558,40 @@ const openAdd = () => {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 cursor-pointer transition-colors">
+              
+              {/* ÁREA DE UPLOAD CLICÁVEL */}
+              <label className="block border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 cursor-pointer transition-colors relative">
+                {/* Input invisível que aciona a função que criamos */}
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  className="hidden" 
+                  onChange={handleCsvImport} 
+                />
                 <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-700 text-sm font-medium">Clique para selecionar o arquivo CSV</p>
-                <p className="text-gray-400 text-xs mt-1">ou arraste e solte aqui</p>
-              </div>
+                <p className="text-gray-400 text-xs mt-1">O upload iniciará automaticamente</p>
+              </label>
+
+              {/* FORMATO ATUALIZADO PARA O BACKEND */}
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-sm font-semibold text-gray-700 mb-2">Formato esperado do CSV:</p>
-                <pre className="text-xs text-gray-500 font-mono bg-white border border-gray-200 rounded-lg p-3">
-                  nome,matricula,turma,status,digital1,digital2,digital3{"\n"}
-                  João Silva,2024010,9A,Ativo,A3F8C2D1,B7E4A9F2,C1D6B3E8
+                <pre className="text-xs text-gray-500 font-mono bg-white border border-gray-200 rounded-lg p-3 overflow-x-auto">
+                  nome,matricula,data_nascimento,serie,curso,turma{"\n"}
+                  Mariana,2026001,2010-05-14,9º Ano,Fundamental,Turma A
                 </pre>
               </div>
+              
               <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                 <AlertTriangle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-700">
-                  A importação será auditada. Dados biométricos são criptografados em repouso conforme LGPD.
-                  Matrículas duplicadas serão ignoradas.
+                  A importação não inclui biometria. Os dados biométricos devem ser cadastrados individualmente após a importação.
                 </p>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
-              <button onClick={() => setShowImportModal(false)} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50">
-                Cancelar
-              </button>
-              <button
-                onClick={() => { setShowImportModal(false); }}
-                className="flex-1 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold"
-              >
-                Importar Arquivo
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button onClick={() => setShowImportModal(false)} className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50">
+                Fechar
               </button>
             </div>
           </div>
