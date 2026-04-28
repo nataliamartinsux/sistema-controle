@@ -28,6 +28,22 @@ export function LoginPage() {
     window.location.href = "http://localhost:8000/auth/google/";
   };
 
+  try {
+  const response = await authService.login(email, password);
+  const papel = response.papel; // 'empresa', 'escola', 'cantina', 'responsavel'
+
+  // Redireciona dependendo de quem logou
+  if (papel === 'cantina') {
+    navigate('/cantina'); // Manda o operador direto para a tela de biometria
+  } else if (papel === 'escola') {
+    navigate('/alunos'); // Escola vai gerenciar alunos
+  } else {
+    navigate('/dashboard'); // Administrador/Empresa vê tudo
+  }
+} catch (error) {
+  alert("Credenciais incorretas!");
+}
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">

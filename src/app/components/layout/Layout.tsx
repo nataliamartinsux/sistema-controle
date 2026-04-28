@@ -15,17 +15,18 @@ import {
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/cantina", icon: UtensilsCrossed, label: "Operação Diária" },
-  { to: "/alunos", icon: Users, label: "Alunos" },
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/relatorios", icon: FileText, label: "Relatórios" },
-  { to: "/configuracoes", icon: Settings, label: "Configurações" },
+  { to: "/cantina", icon: UtensilsCrossed, label: "Operação Diária", allowedRoles: ['cantina', 'empresa'] },
+  { to: "/alunos", icon: Users, label: "Alunos", allowedRoles: ['escola', 'empresa'] },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", allowedRoles: ['escola', 'empresa'] },
+  { to: "/relatorios", icon: FileText, label: "Relatórios", allowedRoles: ['escola', 'empresa'] },
+  { to: "/configuracoes", icon: Settings, label: "Configurações", allowedRoles: ['empresa'] },
 ];
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const papelDoUsuario = localStorage.getItem('sysmerenda_papel');
 
   const handleLogout = () => {
     navigate("/login");
@@ -82,7 +83,9 @@ export function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+          {NAV_ITEMS
+            .filter((item) => item.allowedRoles.includes(papelDoUsuario || ''))
+            .map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
