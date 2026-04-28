@@ -31,6 +31,15 @@ export function Layout() {
     navigate("/login");
   };
 
+  const today = new Date();
+  const formattedDate = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }).format(today);
+  const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Mobile overlay */}
@@ -126,7 +135,7 @@ export function Layout() {
             </button>
             <div>
               <p className="text-gray-500 text-xs">IFB - Campus São Sebastião</p>
-              <p className="text-gray-800 text-sm font-medium">Terça-feira, 31 de Março de 2026</p>
+              <p className="text-gray-800 text-sm font-medium">{capitalizedDate}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
