@@ -83,7 +83,8 @@ export function Layout() {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS
-            .filter((item) => item.allowedRoles.includes(papelDoUsuario || ''))
+            // REGRA NOVA: Se for admin, passa tudo. Se não, verifica a lista.
+            .filter((item) => papelDoUsuario === 'admin' || item.allowedRoles.includes(papelDoUsuario || ''))
             .map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}

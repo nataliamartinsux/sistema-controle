@@ -15,9 +15,13 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to="/login" replace />;
   }
 
+  // REGRA NOVA: Se for admin, tem passe livre em todas as rotas!
+  if (papel === 'admin') {
+    return <>{children}</>;
+  }
+
   // Se a rota exige papéis específicos e o usuário não tem, bloqueia
   if (allowedRoles && !allowedRoles.includes(papel)) {
-    // Manda a cantina de volta pra cantina, e os outros pro dashboard
     return <Navigate to={papel === 'cantina' ? "/cantina" : "/alunos"} replace />;
   }
 
