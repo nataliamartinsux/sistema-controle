@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Upload,
@@ -15,14 +15,36 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../components/ui/dialog";
+import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { STUDENTS, type Student, type StudentStatus } from "../mockData";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-
-const GRADES = ["6º Ano A", "6º Ano B", "7º Ano A", "7º Ano C", "8º Ano A", "8º Ano B", "9º Ano A", "9º Ano B"];
+import { api } from "../services/api";
+import { Student, StudentStatus } from "../types";
 
 export function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>(STUDENTS);
+  const [students, setStudents] = useState<Student[]>([]);
+  // 1. Função para buscar os alunos do banco de dados
+  const fetchStudents = async () => {
+    try {
+      // Puxa da rota /students/ (que está configurada no seu urls.py)
+      const response = await api.get('/students/');
+      setStudents(response.data);
+    } catch (error) {
+      console.error("Erro ao carregar alunos reais:", error);
+    }
+  };
+
+  // 2. Executa a busca assim que a tela carregar
+  useEffect(() => {
+    fetchStudents();
+  }, []);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"" | StudentStatus>("");
   const [filterGrade, setFilterGrade] = useState("");
@@ -32,19 +54,50 @@ export function StudentsPage() {
   const [showBiometricCodes, setShowBiometricCodes] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
-  nome: "",
-  matricula: "",
-  data_nascimento: "",
-  serie: "",
-  curso: "",
-  turma: "",
-  ativo: true,
-  bio1: "",
-  bio2: "",
-  bio3: "",
-  photoPreview: "",
-  foto: null as File | null,
-});
+    nome: "",
+    matricula: "",
+    data_nascimento: "",
+    serie: "",
+    curso: "",
+    turma: "",
+    ativo: true,
+    bio1: "",
+    bio2: "",
+    bio3: "",
+    photoPreview: "",
+    foto: null as File | null,
+  });
+  const [turmas, setTurmas] = useState<any[]>([]);
+  const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
+  const [novaTurmaNome, setNovaTurmaNome] = useState("");
+  const carregarTurmas = async () => {
+    try {
+      const response = await api.get('/turmas/');
+      setTurmas(response.data);
+    } catch (error) {
+      console.error("Erro ao buscar turmas", error);
+    }
+  };
+
+  useEffect(() => {
+    carregarTurmas();
+  }, []);
+
+  const handleSaveTurma = async () => {
+    if (!novaTurmaNome) return;
+    try {
+      const response = await api.post('/turmas/', { nome: novaTurmaNome });
+      setTurmas([...turmas, response.data]);
+      
+      // Vincula a turma recém-criada ao aluno que está sendo cadastrado
+      setFormData({ ...formData, turma: response.data.id }); 
+      
+      setIsTurmaModalOpen(false);
+      setNovaTurmaNome("");
+    } catch (error) {
+      console.error("Erro ao criar turma. Pode já existir uma com esse nome.");
+    }
+  };
 
 const openAdd = () => {
   setEditingStudent(null);
@@ -256,7 +309,7 @@ const openAdd = () => {
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none bg-white focus:ring-2 focus:ring-slate-500"
           >
             <option value="">Todas as turmas</option>
-            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
+            {turmas.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
         <div className="text-sm text-gray-500 ml-auto">
@@ -460,13 +513,26 @@ const openAdd = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                     placeholder="Curso"
                   />
-                  <input
-                    type="text"
-                    value={formData.turma}
-                    onChange={(e) => setFormData({ ...formData, turma: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                    placeholder="Turma"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white"
+                      value={formData.turma}
+                      onChange={(e) => setFormData({ ...formData, turma: e.target.value })}
+                    >
+                      <option value="">Turma...</option>
+                      {turmas.map((t) => (
+                        <option key={t.id} value={t.id}>{t.nome}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setIsTurmaModalOpen(true)}
+                      className="px-3 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center justify-center"
+                      title="Nova Turma"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
@@ -597,6 +663,28 @@ const openAdd = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Nova Turma */}
+      <Dialog open={isTurmaModalOpen} onOpenChange={setIsTurmaModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Turma</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <input
+              type="text"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+              placeholder="Nome da turma (ex: 3º Ano A)"
+              value={novaTurmaNome}
+              onChange={(e) => setNovaTurmaNome(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsTurmaModalOpen(false)}>Cancelar</Button>
+            <Button className="bg-slate-900 hover:bg-slate-700 text-white" onClick={handleSaveTurma}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
