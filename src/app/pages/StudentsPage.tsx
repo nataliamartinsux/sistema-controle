@@ -266,14 +266,14 @@ const openAdd = () => {
         <div className="flex gap-2">
           <button
             onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
           >
             <Upload className="w-4 h-4" />
             Importar CSV
           </button>
           <button
             onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Adicionar Aluno
@@ -378,14 +378,14 @@ const openAdd = () => {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openEdit(student)}
-                        className="p-1.5 text-gray-400 hover:text-slate-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-slate-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                         title="Editar"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(student.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                         title="Excluir"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -408,14 +408,14 @@ const openAdd = () => {
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -432,7 +432,7 @@ const openAdd = () => {
               <h3 className="text-lg font-bold text-gray-800">
                 {editingStudent ? "Editar Aluno" : "Adicionar Aluno"}
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+          <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -532,7 +532,7 @@ const openAdd = () => {
                     <button
                       type="button"
                       onClick={() => setIsTurmaModalOpen(true)}
-                      className="px-3 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center justify-center"
+                    className="px-3 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center justify-center cursor-pointer"
                       title="Nova Turma"
                     >
                       <Plus className="w-4 h-4" />
@@ -560,7 +560,7 @@ const openAdd = () => {
                   <button
                     type="button"
                     onClick={() => setShowBiometricCodes(!showBiometricCodes)}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
                   >
                     {showBiometricCodes ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     {showBiometricCodes ? "Ocultar" : "Exibir"}
@@ -598,14 +598,14 @@ const openAdd = () => {
             <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50"
+            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
                 disabled={!formData.nome || !formData.matricula || !formData.curso || !formData.turma}
-                className="flex-1 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold"
+            className="flex-1 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold cursor-pointer"
               >
                 {editingStudent ? "Salvar Alterações" : "Cadastrar Aluno"}
               </button>
@@ -620,7 +620,7 @@ const openAdd = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-800">Importar Alunos via CSV</h3>
-              <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600">
+          <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -657,7 +657,7 @@ const openAdd = () => {
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-              <button onClick={() => setShowImportModal(false)} className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50">
+          <button onClick={() => setShowImportModal(false)} className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 cursor-pointer">
                 Fechar
               </button>
             </div>
@@ -681,8 +681,8 @@ const openAdd = () => {
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsTurmaModalOpen(false)}>Cancelar</Button>
-            <Button className="bg-slate-900 hover:bg-slate-700 text-white" onClick={handleSaveTurma}>Salvar</Button>
+            <Button variant="ghost" className="cursor-pointer" onClick={() => setIsTurmaModalOpen(false)}>Cancelar</Button>
+            <Button className="bg-slate-900 hover:bg-slate-700 text-white cursor-pointer" onClick={handleSaveTurma}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
