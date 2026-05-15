@@ -442,10 +442,6 @@ const openAdd = () => {
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-700">Foto do Aluno</p>
                   <p className="text-xs text-gray-400 mt-0.5">JPG, PNG até 5MB. A foto é exibida na validação biométrica.</p>
-                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                    <p className="text-xs text-amber-600">Dados biométricos protegidos pela LGPD</p>
-                  </div>
                 </div>
               </div>
 
@@ -533,17 +529,13 @@ const openAdd = () => {
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
-                  <div className="flex gap-3">
-                    {(["Ativo", "Inativo"] as StudentStatus[]).map((s) => (
-                      <select
-                        value={formData.ativo ? "true" : "false"}
-                        onChange={(e) => setFormData({ ...formData, ativo: e.target.value === "true" })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                        <option value="true">Ativo</option>
-                        <option value="false">Inativo</option>
-                      </select>
-                    ))}
-                  </div>
+                  <select
+                    value={formData.ativo ? "true" : "false"}
+                    onChange={(e) => setFormData({ ...formData, ativo: e.target.value === "true" })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                  </select>
                 </div>
               </div>
 
