@@ -57,7 +57,6 @@ export function StudentsPage() {
     nome: "",
     matricula: "",
     data_nascimento: "",
-    serie: "",
     curso: "",
     turma: "",
     ativo: true,
@@ -102,7 +101,7 @@ export function StudentsPage() {
 const openAdd = () => {
   setEditingStudent(null);
   setFormData({
-    nome: "", matricula: "", data_nascimento: "", serie: "", 
+    nome: "", matricula: "", data_nascimento: "", 
     curso: "", turma: "", ativo: true, bio1: "", bio2: "", 
     bio3: "", photoPreview: "", foto: null 
   });
@@ -117,7 +116,7 @@ const openAdd = () => {
       s.matricula.includes(search);
     const matchStatus = filterStatus === "Ativo" ? s.ativo === true : 
                         filterStatus === "Inativo" ? s.ativo === false : true;
-    const matchGrade = filterGrade ? s.serie === filterGrade : true;
+    const matchGrade = filterGrade ? String(s.turma) === filterGrade || s.turma === filterGrade : true;
     return matchSearch && matchStatus && matchGrade;
   });
 
@@ -130,7 +129,6 @@ const openAdd = () => {
       nome: student.nome,
       matricula: student.matricula,
       data_nascimento: student.data_nascimento,
-      serie: student.serie,
       curso: student.curso || "",
       turma: student.turma || "",
       ativo: student.ativo,
@@ -144,12 +142,12 @@ const openAdd = () => {
   };
 
   const handleSave = () => {
-    if (!formData.nome || !formData.matricula || !formData.serie) return;
+    if (!formData.nome || !formData.matricula || !formData.curso || !formData.turma) return;
     if (editingStudent) {
       setStudents((prev) =>
         prev.map((s) =>
           s.id === editingStudent.id
-            ? { ...s, nome: formData.nome, matricula: formData.matricula, data_nascimento: formData.data_nascimento, serie: formData.serie, curso: formData.curso, turma: formData.turma, ativo: formData.ativo, biometricCodes: [formData.bio1, formData.bio2, formData.bio3] }
+            ? { ...s, nome: formData.nome, matricula: formData.matricula, data_nascimento: formData.data_nascimento, curso: formData.curso, turma: formData.turma, ativo: formData.ativo, biometricCodes: [formData.bio1, formData.bio2, formData.bio3] }
             : s
         )
       );
@@ -159,7 +157,6 @@ const openAdd = () => {
         nome: formData.nome,
         matricula: formData.matricula,
         data_nascimento: formData.data_nascimento,
-        serie: formData.serie,
         curso: formData.curso,
         turma: formData.turma,
         ativo: formData.ativo,
@@ -211,17 +208,16 @@ const openAdd = () => {
       }
 
       // Ignora o cabeçalho (linha 0) e mapeia os dados
-      // O backend espera: nome, matricula, data_nascimento, serie
+      // O backend espera: nome, matricula, data_nascimento, curso, turma
       const importedStudents: Student[] = rows.slice(1).map((row, index) => {
         // Divide as colunas separadas por vírgula
-        const [nome, matricula, data_nascimento, serie, curso, turma] = row.split(',');
+        const [nome, matricula, data_nascimento, curso, turma] = row.split(',');
 
         return {
           id: `import-${Date.now()}-${index}`, // ID provisório
           nome: nome?.trim() || "Sem Nome",
           matricula: matricula?.trim() || `SEM-MAT-${index}`,
           data_nascimento: data_nascimento?.trim() || "2010-01-01",
-          serie: serie?.trim() || "",
           curso: curso?.trim() || "",
           turma: turma?.trim() || "",
           ativo: true,
@@ -309,7 +305,7 @@ const openAdd = () => {
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none bg-white focus:ring-2 focus:ring-slate-500"
           >
             <option value="">Todas as turmas</option>
-            {turmas.map((g) => <option key={g} value={g}>{g}</option>)}
+            {turmas.map((g) => <option key={g.id || g} value={g.id || g}>{g.nome || g}</option>)}
           </select>
         </div>
         <div className="text-sm text-gray-500 ml-auto">
@@ -354,8 +350,8 @@ const openAdd = () => {
 
                   <td className="p-4">
                     <div className="flex flex-col">
-                      <span className="text-sm text-gray-700 font-medium">{student.serie}</span>
-                      <span className="text-xs text-gray-400">{student.turma || 'Sem turma'}</span>
+                      <span className="text-sm text-gray-700 font-medium">{student.curso || '-'}</span>
+                      <span className="text-xs text-gray-400">{turmas.find(t => String(t.id) === String(student.turma))?.nome || student.turma || 'Sem turma'}</span>
                     </div>
                   </td>
 
@@ -494,34 +490,35 @@ const openAdd = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Série (Ano) <span className="text-red-500">*</span>
+                    Curso <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    value={formData.serie}
-                    onChange={(e) => setFormData({ ...formData, serie: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                    placeholder="Ex: 7EF"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="text"
                     value={formData.curso}
                     onChange={(e) => setFormData({ ...formData, curso: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                    placeholder="Curso"
-                  />
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white"
+                  >
+                    <option value="">Selecione o curso...</option>
+                    <option value="Ensino Fundamental">Ensino Fundamental</option>
+                    <option value="Ensino Médio">Ensino Médio</option>
+                    <option value="Técnico Integrado">Técnico Integrado</option>
+                    <option value="Educação Infantil">Educação Infantil</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Turma <span className="text-red-500">*</span>
+                  </label>
                   <div className="flex gap-2">
                     <select
+                      required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white"
                       value={formData.turma}
                       onChange={(e) => setFormData({ ...formData, turma: e.target.value })}
                     >
-                      <option value="">Turma...</option>
+                      <option value="">Selecione a turma...</option>
                       {turmas.map((t) => (
-                        <option key={t.id} value={t.id}>{t.nome}</option>
+                        <option key={t.id || t} value={t.id || t}>{t.nome || t}</option>
                       ))}
                     </select>
                     <button
@@ -603,7 +600,7 @@ const openAdd = () => {
               </button>
               <button
                 onClick={handleSave}
-                disabled={!formData.nome || !formData.matricula || !formData.serie}
+                disabled={!formData.nome || !formData.matricula || !formData.curso || !formData.turma}
                 className="flex-1 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold"
               >
                 {editingStudent ? "Salvar Alterações" : "Cadastrar Aluno"}
@@ -643,7 +640,7 @@ const openAdd = () => {
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-sm font-semibold text-gray-700 mb-2">Formato esperado do CSV:</p>
                 <pre className="text-xs text-gray-500 font-mono bg-white border border-gray-200 rounded-lg p-3 overflow-x-auto">
-                  nome,matricula,data_nascimento,serie,curso,turma{"\n"}
+                  nome,matricula,data_nascimento,curso,turma{"\n"}
                   Mariana,2026001,2010-05-14,9º Ano,Fundamental,Turma A
                 </pre>
               </div>
