@@ -15,14 +15,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../components/ui/dialog";
-import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api } from "../services/api";
@@ -96,10 +88,19 @@ export function StudentsPage() {
   const carregarTurmas = async () => {
     try {
       const response = await api.get('/api/turmas/');
-      setTurmas(response.data);
+      console.log("Turmas recebidas da API:", response.data);
+      
+      let data = response.data;
+      // Extrai a array caso o backend coloque dentro de uma chave diferente (results, data, turmas, etc.)
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        data = data.results || data.data || data.turmas || Object.values(data).find(Array.isArray) || [];
+      }
+      
+      setTurmas(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error("Erro ao buscar turmas", error);
       if (error.response?.status === 404) console.error("A rota de turmas não foi encontrada (404).");
+      setTurmas([]);
     }
   };
 
@@ -111,15 +112,17 @@ export function StudentsPage() {
     if (!novaTurmaNome) return;
     try {
       const response = await api.post('/api/turmas/', { nome: novaTurmaNome });
-      setTurmas([...turmas, response.data]);
       
+      setTurmas((prev) => [...prev, response.data]);
       // Vincula a turma recém-criada ao aluno que está sendo cadastrado
-      setFormData({ ...formData, turma: response.data.id }); 
+      setFormData((prev) => ({ ...prev, turma: response.data.id })); 
       
       setIsTurmaModalOpen(false);
       setNovaTurmaNome("");
-    } catch (error) {
-      console.error("Erro ao criar turma. Pode já existir uma com esse nome.");
+    } catch (error: any) {
+      console.error("Erro ao criar turma:", error);
+      const errorMessage = error.response?.data?.nome?.[0] || error.response?.data?.detail || "Verifique se a turma já existe ou os dados estão corretos.";
+      alert(`Erro ao criar turma: ${errorMessage}`);
     }
   };
 
@@ -335,7 +338,11 @@ const openAdd = () => {
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none bg-white focus:ring-2 focus:ring-slate-500"
           >
             <option value="">Todas as turmas</option>
-            {turmas.map((g) => <option key={g.id || g} value={g.id || g}>{g.nome || g}</option>)}
+            {turmas.map((g) => (
+              <option key={g.id || g.nome || g} value={g.id || g.nome || g}>
+                {g.nome || g.serie || g.name || g.descricao || (typeof g === 'string' ? g : "Turma Sem Nome")}
+              </option>
+            ))}
           </select>
         </div>
         <div className="text-sm text-gray-500 ml-auto">
@@ -412,7 +419,13 @@ const openAdd = () => {
                   <td className="p-4">
                     <div className="flex flex-col">
                       <span className="text-sm text-gray-700 font-medium">{student.curso || '-'}</span>
-                      <span className="text-xs text-gray-400">{turmas.find(t => String(t.id) === String(student.turma))?.nome || student.turma || 'Sem turma'}</span>
+                      <span className="text-xs text-gray-400">
+                        {(() => {
+                          const t = turmas.find(t => String(t.id) === String(student.turma));
+                          if (!t) return student.turma || 'Sem turma';
+                          return t.nome || t.serie || t.name || t.descricao || student.turma;
+                        })()}
+                      </span>
                     </div>
                   </td>
 
@@ -582,7 +595,9 @@ const openAdd = () => {
                     >
                       <option value="">Selecione a turma...</option>
                       {turmas.map((t) => (
-                        <option key={t.id || t} value={t.id || t}>{t.nome || t}</option>
+                        <option key={t.id || t.nome || t} value={t.id || t.nome || t}>
+                          {t.nome || t.serie || t.name || t.descricao || (typeof t === 'string' ? t : "Turma Sem Nome")}
+                        </option>
                       ))}
                     </select>
                     <button
@@ -722,26 +737,36 @@ const openAdd = () => {
       )}
 
       {/* Modal de Nova Turma */}
-      <Dialog open={isTurmaModalOpen} onOpenChange={setIsTurmaModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nova Turma</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <input
-              type="text"
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-              placeholder="Nome da turma (ex: 3º Ano A)"
-              value={novaTurmaNome}
-              onChange={(e) => setNovaTurmaNome(e.target.value)}
-            />
+      {isTurmaModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-800">Nova Turma</h3>
+              <button onClick={() => setIsTurmaModalOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <input
+                type="text"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                placeholder="Nome da turma (ex: 3º Ano A)"
+                value={novaTurmaNome}
+                onChange={(e) => setNovaTurmaNome(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={() => setIsTurmaModalOpen(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 cursor-pointer">
+                Cancelar
+              </button>
+              <button onClick={handleSaveTurma} className="px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold cursor-pointer">
+                Salvar
+              </button>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" className="cursor-pointer" onClick={() => setIsTurmaModalOpen(false)}>Cancelar</Button>
-            <Button className="bg-slate-900 hover:bg-slate-700 text-white cursor-pointer" onClick={handleSaveTurma}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }
