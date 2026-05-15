@@ -375,10 +375,8 @@ const openAdd = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-16">Foto</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nome</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Matrícula</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Turma</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aluno</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Curso / Turma</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Refeição Hoje</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
@@ -387,7 +385,7 @@ const openAdd = () => {
             <tbody className="divide-y divide-gray-100">
               {isLoading && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-gray-500 font-medium">
+                  <td colSpan={5} className="p-8 text-center text-gray-500 font-medium">
                     <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                     Carregando alunos...
                   </td>
@@ -395,7 +393,7 @@ const openAdd = () => {
               )}
               {!isLoading && apiError && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-red-500 font-medium">
+                  <td colSpan={5} className="p-8 text-center text-red-500 font-medium">
                     <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
                     {apiError}
                     {(apiError.includes("401") || apiError.includes("CORS")) && (
@@ -411,7 +409,7 @@ const openAdd = () => {
               )}
               {!isLoading && !apiError && paginated.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-gray-500 font-medium">
+                  <td colSpan={5} className="p-8 text-center text-gray-500 font-medium">
                     Nenhum aluno encontrado no banco de dados.
                   </td>
                 </tr>
