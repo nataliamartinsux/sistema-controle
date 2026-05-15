@@ -53,6 +53,10 @@ export function StudentsPage() {
       if (error.response?.status === 404) {
         const urlTentada = error.config ? `${error.config.baseURL || ''}${error.config.url}` : '/api/estudantes/';
         setApiError(`Erro 404: O backend não encontrou a rota (${urlTentada}). Verifique os nomes das rotas no seu urls.py!`);
+      } else if (error.response?.status === 401) {
+        setApiError("Erro 401: Acesso não autorizado. Sua sessão expirou ou o token é inválido.");
+      } else if (error.message === "Network Error") {
+        setApiError("Erro de Rede (CORS). O Django bloqueou a requisição ou o servidor está desligado.");
       } else {
         setApiError("Falha de conexão com a API. Verifique se o servidor está rodando.");
       }
@@ -368,6 +372,14 @@ const openAdd = () => {
                   <td colSpan={7} className="p-8 text-center text-red-500 font-medium">
                     <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
                     {apiError}
+                    {(apiError.includes("401") || apiError.includes("CORS")) && (
+                      <button 
+                        onClick={() => { localStorage.removeItem("sysmerenda_access"); window.location.href = '/login'; }}
+                        className="mt-4 px-4 py-2 bg-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-200 transition-colors block mx-auto text-sm cursor-pointer"
+                      >
+                        Ir para a tela de Login
+                      </button>
+                    )}
                   </td>
                 </tr>
               )}
