@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// URL base do backend que ela informou
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://127.0.0.1:8000';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -20,3 +19,17 @@ api.interceptors.request.use((config) => {
   
   return config;
 });
+
+// Interceptor de resposta: Redireciona para o login se o token expirar ou for inválido (401)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.warn("Token expirado ou inválido. Redirecionando para o login...");
+      localStorage.removeItem("sysmerenda_access");
+      localStorage.removeItem("sysmerenda_papel");
+      window.location.href = "/login"; // Força o usuário a logar de novo
+    }
+    return Promise.reject(error);
+  }
+);
