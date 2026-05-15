@@ -35,8 +35,8 @@ export function StudentsPage() {
   // 1. Função para buscar os alunos do banco de dados
   const fetchStudents = async () => {
     try {
-      // Puxa da rota /students/ (que está configurada no seu urls.py)
-      const response = await api.get('/students/');
+      // Puxa da rota /api/estudantes/ (que está configurada no seu router do urls.py)
+      const response = await api.get('/api/estudantes/');
       
       // Lida com API paginada (ex: Django) onde os dados vêm dentro de "results"
       const data = response.data.results || response.data;
@@ -48,9 +48,14 @@ export function StudentsPage() {
         console.error("A API não retornou um array de alunos:", response.data);
         setApiError("Formato de dados incorreto recebido do servidor.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao carregar alunos reais:", error);
-      setApiError("Falha de conexão com a API. Verifique se o servidor está rodando.");
+      if (error.response?.status === 404) {
+        const urlTentada = error.config ? `${error.config.baseURL || ''}${error.config.url}` : '/api/estudantes/';
+        setApiError(`Erro 404: O backend não encontrou a rota (${urlTentada}). Verifique os nomes das rotas no seu urls.py!`);
+      } else {
+        setApiError("Falha de conexão com a API. Verifique se o servidor está rodando.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -86,10 +91,11 @@ export function StudentsPage() {
   const [novaTurmaNome, setNovaTurmaNome] = useState("");
   const carregarTurmas = async () => {
     try {
-      const response = await api.get('/turmas/');
+      const response = await api.get('/api/turmas/');
       setTurmas(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao buscar turmas", error);
+      if (error.response?.status === 404) console.error("A rota de turmas não foi encontrada (404).");
     }
   };
 
@@ -100,7 +106,7 @@ export function StudentsPage() {
   const handleSaveTurma = async () => {
     if (!novaTurmaNome) return;
     try {
-      const response = await api.post('/turmas/', { nome: novaTurmaNome });
+      const response = await api.post('/api/turmas/', { nome: novaTurmaNome });
       setTurmas([...turmas, response.data]);
       
       // Vincula a turma recém-criada ao aluno que está sendo cadastrado
@@ -176,9 +182,9 @@ const openAdd = () => {
       }
 
       if (editingStudent) {
-        await api.put(`/students/${editingStudent.id}/`, payload, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.put(`/api/estudantes/${editingStudent.id}/`, payload, { headers: { "Content-Type": "multipart/form-data" } });
       } else {
-        await api.post("/students/", payload, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.post("/api/estudantes/", payload, { headers: { "Content-Type": "multipart/form-data" } });
       }
 
       fetchStudents(); // Atualiza a lista com o banco de dados
