@@ -50,15 +50,15 @@ export const router = createBrowserRouter([
       },
       { 
         path: "alunos", 
-        element: <ProtectedRoute allowedRoles={['escola', 'empresa']}><StudentsPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['operador', 'empresa']}><StudentsPage /></ProtectedRoute> 
       },
       { 
         path: "dashboard", 
-        element: <ProtectedRoute allowedRoles={['escola', 'empresa']}><DashboardPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'fiscal', 'gestor']}><DashboardPage /></ProtectedRoute> 
       },
       { 
         path: "relatorios", 
-        element: <ProtectedRoute allowedRoles={['escola', 'empresa']}><ReportsPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'fiscal', 'gestor']}><ReportsPage /></ProtectedRoute> 
       },
       { 
         path: "configuracoes", 

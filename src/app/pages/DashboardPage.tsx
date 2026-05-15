@@ -47,7 +47,7 @@ type TabId = (typeof TAB_IDS)[number];
 const TAB_LABELS: Record<TabId, string> = {
   empresa: "Empresa",
   fiscal: "Fiscal",
-  gestao: "Gestão Escolar",
+  gestao: "Operador",
 };
 
 const StatCard = ({
@@ -412,8 +412,15 @@ function GestaoTab() {
 }
 
 export function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("empresa");
   const [searchParams, setSearchParams] = useSearchParams();
+  const [papel, setPapel] = useState(() => localStorage.getItem("sysmerenda_papel") || "");
+  
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const p = localStorage.getItem("sysmerenda_papel") || "";
+    if (p === "fiscal") return "fiscal";
+    if (p === "operador" || p === "gestor") return "gestao";
+    return "empresa";
+  });
   // Lê o valor que foi definido lá na SettingsPage
   const diasUteis = parseInt(localStorage.getItem('sysmerenda_dias_uteis') || '22');
   // Exemplo de uso no cálculo:
@@ -424,7 +431,7 @@ export function DashboardPage() {
     const error = searchParams.get("error");
     const access = searchParams.get("access");
     const refresh = searchParams.get("refresh");
-    const papel = searchParams.get("papel");
+    const papelURL = searchParams.get("papel");
 
     if (error) {
       alert(`Erro no login com Google: ${error}`);
@@ -432,36 +439,45 @@ export function DashboardPage() {
     } else if (access) {
       localStorage.setItem("sysmerenda_access", access);
       localStorage.setItem("sysmerenda_refresh", refresh || "");
-      localStorage.setItem("sysmerenda_papel", papel || "");
+      localStorage.setItem("sysmerenda_papel", papelURL || "");
+      
+      setPapel(papelURL || "");
+      if (papelURL === "fiscal") setActiveTab("fiscal");
+      else if (papelURL === "operador" || papelURL === "gestor") setActiveTab("gestao");
+      else setActiveTab("empresa");
       
       setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
 
+  const isAdmin = papel === "admin";
+
   return (
     <div className="p-6 space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-gray-900 text-2xl font-bold">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Visão consolidada por perfil — 31/03/2026</p>
+        <h1 className="text-gray-900 text-2xl font-bold">Dashboard {isAdmin ? "Administrativo" : `- ${TAB_LABELS[activeTab]}`}</h1>
+        <p className="text-gray-500 text-sm mt-0.5">Visão consolidada — {new Date().toLocaleDateString("pt-BR")}</p>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-xl border border-gray-200 p-1.5 flex gap-1">
-        {TAB_IDS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-              activeTab === tab
-                ? "bg-slate-900 text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            {TAB_LABELS[tab]}
-          </button>
-        ))}
-      </div>
+      {/* Tabs - Visíveis apenas para o Administrador (que tem acesso total) */}
+      {isAdmin && (
+        <div className="bg-white rounded-xl border border-gray-200 p-1.5 flex gap-1">
+          {TAB_IDS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === tab
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {TAB_LABELS[tab]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === "empresa" && <EmpresaTab />}
