@@ -141,32 +141,37 @@ const openAdd = () => {
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.nome || !formData.matricula || !formData.curso || !formData.turma) return;
-    if (editingStudent) {
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === editingStudent.id
-            ? { ...s, nome: formData.nome, matricula: formData.matricula, data_nascimento: formData.data_nascimento, curso: formData.curso, turma: formData.turma, ativo: formData.ativo, biometricCodes: [formData.bio1, formData.bio2, formData.bio3] }
-            : s
-        )
-      );
-    } else {
-      const newStudent: Student = {
-        id: String(Date.now()),
-        nome: formData.nome,
-        matricula: formData.matricula,
-        data_nascimento: formData.data_nascimento,
-        curso: formData.curso,
-        turma: formData.turma,
-        ativo: formData.ativo,
-        foto: "https://images.unsplash.com/photo-1681070909604-f555aa006564?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400",
-        biometricCodes: [formData.bio1 || "A0000000", formData.bio2 || "B0000000", formData.bio3 || "C0000000"],
-        hasConsumedToday: false,
-      };
-      setStudents((prev) => [...prev, newStudent]);
+
+    try {
+      const payload = new FormData();
+      payload.append("nome", formData.nome);
+      payload.append("matricula", formData.matricula);
+      payload.append("data_nascimento", formData.data_nascimento);
+      payload.append("curso", formData.curso);
+      payload.append("turma", formData.turma);
+      payload.append("ativo", String(formData.ativo));
+      if (formData.bio1) payload.append("bio1", formData.bio1);
+      if (formData.bio2) payload.append("bio2", formData.bio2);
+      if (formData.bio3) payload.append("bio3", formData.bio3);
+
+      if (formData.foto) {
+        payload.append("foto", formData.foto);
+      }
+
+      if (editingStudent) {
+        await api.put(`/students/${editingStudent.id}/`, payload, { headers: { "Content-Type": "multipart/form-data" } });
+      } else {
+        await api.post("/students/", payload, { headers: { "Content-Type": "multipart/form-data" } });
+      }
+
+      fetchStudents(); // Atualiza a lista com o banco de dados
+      setShowModal(false);
+    } catch (error) {
+      console.error("Erro ao salvar aluno:", error);
+      alert("Ocorreu um erro ao salvar o aluno. Verifique os dados.");
     }
-    setShowModal(false);
   };
 
   const handleDelete = (id: string) => {
@@ -435,10 +440,17 @@ const openAdd = () => {
             <div className="p-6 overflow-y-auto space-y-4">
               {/* Photo Upload */}
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-gray-50 flex-shrink-0">
-                  <Camera className="w-6 h-6 text-gray-400" />
-                  <span className="text-xs text-gray-400">Foto</span>
-                </div>
+                <label className="w-20 h-20 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-gray-50 flex-shrink-0 relative overflow-hidden">
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  {formData.photoPreview ? (
+                    <img src={formData.photoPreview} alt="Preview da Foto" className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <Camera className="w-6 h-6 text-gray-400" />
+                      <span className="text-xs text-gray-400">Foto</span>
+                    </>
+                  )}
+                </label>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-700">Foto do Aluno</p>
                   <p className="text-xs text-gray-400 mt-0.5">JPG, PNG até 5MB. A foto é exibida na validação biométrica.</p>
