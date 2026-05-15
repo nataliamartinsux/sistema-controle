@@ -30,14 +30,29 @@ import { Student, StudentStatus } from "../types";
 
 export function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
   // 1. Função para buscar os alunos do banco de dados
   const fetchStudents = async () => {
     try {
       // Puxa da rota /students/ (que está configurada no seu urls.py)
       const response = await api.get('/students/');
-      setStudents(response.data);
+      
+      // Lida com API paginada (ex: Django) onde os dados vêm dentro de "results"
+      const data = response.data.results || response.data;
+      console.log("Dados recebidos da API (Alunos):", data);
+      
+      if (Array.isArray(data)) {
+        setStudents(data);
+      } else {
+        console.error("A API não retornou um array de alunos:", response.data);
+        setApiError("Formato de dados incorreto recebido do servidor.");
+      }
     } catch (error) {
       console.error("Erro ao carregar alunos reais:", error);
+      setApiError("Falha de conexão com a API. Verifique se o servidor está rodando.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -112,8 +127,8 @@ const openAdd = () => {
 
   const filtered = students.filter((s) => {
     const matchSearch =
-      s.nome.toLowerCase().includes(search.toLowerCase()) ||
-      s.matricula.includes(search);
+      (s.nome || "").toLowerCase().includes(search.toLowerCase()) ||
+      String(s.matricula || "").includes(search);
     const matchStatus = filterStatus === "Ativo" ? s.ativo === true : 
                         filterStatus === "Inativo" ? s.ativo === false : true;
     const matchGrade = filterGrade ? String(s.turma) === filterGrade || s.turma === filterGrade : true;
@@ -132,9 +147,9 @@ const openAdd = () => {
       curso: student.curso || "",
       turma: student.turma || "",
       ativo: student.ativo,
-      bio1: student.biometricCodes[0],
-      bio2: student.biometricCodes[1],
-      bio3: student.biometricCodes[2],
+      bio1: student.biometricCodes?.[0] || "",
+      bio2: student.biometricCodes?.[1] || "",
+      bio3: student.biometricCodes?.[2] || "",
       photoPreview: student.foto || "",
       foto: null,
     });
@@ -314,7 +329,7 @@ const openAdd = () => {
           </select>
         </div>
         <div className="text-sm text-gray-500 ml-auto">
-          {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+          {isLoading ? "Carregando..." : `${filtered.length} resultado${filtered.length !== 1 ? "s" : ""}`}
         </div>
       </div>
 
@@ -334,6 +349,29 @@ const openAdd = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
+              {isLoading && (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-gray-500 font-medium">
+                    <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    Carregando alunos...
+                  </td>
+                </tr>
+              )}
+              {!isLoading && apiError && (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-red-500 font-medium">
+                    <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
+                    {apiError}
+                  </td>
+                </tr>
+              )}
+              {!isLoading && !apiError && paginated.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-gray-500 font-medium">
+                    Nenhum aluno encontrado no banco de dados.
+                  </td>
+                </tr>
+              )}
               {paginated.map((student) => (
                 <tr key={student.id} className="group hover:bg-gray-50/50 transition-colors border-b border-gray-100">
                   
