@@ -76,13 +76,13 @@ export function LoginPage() {
     
     try {
       const response = await authService.login(email, password);
-      const papel = response.papel; // 'empresa', 'escola', 'cantina', 'responsavel'
+      const papel = response.papel; // 'empresa', 'operador', 'cantina', 'responsavel'
 
       // Redireciona dependendo de quem logou
       if (papel === 'cantina') {
         navigate('/cantina'); // Manda o operador direto para a tela de biometria
-      } else if (papel === 'escola') {
-        navigate('/alunos'); // Escola vai gerenciar alunos
+      } else if (papel === 'operador') {
+        navigate('/alunos'); // Operador vai gerenciar alunos
       } else {
         navigate('/dashboard'); // Administrador/Empresa vê tudo
       }
@@ -133,7 +133,7 @@ export function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="usuario@escola.edu.br"
+                  placeholder="usuario@operador.com.br"
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 />
               </div>

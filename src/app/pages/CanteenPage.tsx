@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Fingerprint,
   CheckCircle2,
@@ -14,16 +14,25 @@ import {
   ClipboardList,
   Zap,
 } from "lucide-react";
-import { STUDENTS, MANUAL_REASONS, MEAL_RECORDS_TODAY, type Student } from "../mockData";
+import { type Student } from "../types";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { api } from "../services/api";
 
 type CanteenState = "idle" | "success" | "blocked";
-type BlockReason = "Refeição já consumida hoje" | "Aluno Inativo" | "Biometria não cadastrada";
+type BlockReason = "Refeição já consumida hoje" | "Aluno Inativo" | "Biometria não cadastrada" | "Erro de conexão";
 
 interface ConsumedRecord {
-  studentId: string;
+  studentId: string | number;
+  nome?: string;
   time: string;
 }
+
+const MANUAL_REASONS = [
+  "Esqueceu/Perdeu Biometria",
+  "Digital não reconhecida",
+  "Problema no leitor",
+  "Exceção autorizada pela diretoria"
+];
 
 export function CanteenPage() {
   const [state, setState] = useState<CanteenState>("idle");
@@ -37,15 +46,40 @@ export function CanteenPage() {
   const [manualReason, setManualReason] = useState("");
   const [occurrenceType, setOccurrenceType] = useState("");
   const [occurrenceDesc, setOccurrenceDesc] = useState("");
-  const [consumedToday, setConsumedToday] = useState<ConsumedRecord[]>(
-    MEAL_RECORDS_TODAY.map((r) => ({ studentId: r.alunoId, time: r.time }))
-  );
+  const [consumedToday, setConsumedToday] = useState<ConsumedRecord[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [readerOnline, setReaderOnline] = useState(true);
-  const [successCount, setSuccessCount] = useState(MEAL_RECORDS_TODAY.length);
+  const [successCount, setSuccessCount] = useState(0);
   const [notification, setNotification] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  // Busca contagem inicial do dia na API
+  useEffect(() => {
+    api.get('/api/dashboard/hoje/')
+      .then(res => {
+        if (res.data) {
+          setSuccessCount(res.data.refeicoes || 0);
+          setConsumedToday(res.data.ultimas_refeicoes?.map((r: any) => ({ studentId: r.alunoId || r.id, nome: r.nome, time: r.time || r.hora })) || []);
+        }
+      })
+      .catch(err => console.error("Erro ao carregar dados do dia", err));
+  }, []);
+
+  // Busca de alunos para Liberação Manual
+  useEffect(() => {
+    const delayFn = setTimeout(() => {
+      if (searchQuery.length >= 3) {
+        api.get(`/api/estudantes/busca/?q=${searchQuery}`)
+          .then(res => setFilteredStudents(res.data.results || res.data))
+          .catch(e => console.error(e));
+      } else {
+        setFilteredStudents([]);
+      }
+    }, 500);
+    return () => clearTimeout(delayFn);
+  }, [searchQuery]);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -60,46 +94,35 @@ export function CanteenPage() {
     }, delay);
   };
 
-  const simulateSuccess = (student?: Student) => {
-    const s = student || STUDENTS.find((s) => !consumedToday.find((c) => c.studentId === s.id) && s.ativo);
-    if (!s) {
-      simulateBlock("Refeição já consumida hoje");
-      return;
-    }
+  const simulateSuccess = (student: Student) => {
     setState("success");
-    setCurrentStudent(s);
+    setCurrentStudent(student);
     const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    setConsumedToday((prev) => [...prev, { studentId: s.id, time: now }]);
+    setConsumedToday((prev) => [...prev, { studentId: student.id, nome: student.nome, time: now }]);
     setSuccessCount((c) => c + 1);
     resetToIdle();
   };
 
-  const simulateBlock = (reason: BlockReason) => {
-    const student = STUDENTS.find((s) => {
-      if (reason === "Refeição já consumida hoje") return consumedToday.find((c) => c.studentId === s.id);
-      if (reason === "Aluno Inativo") return !s.ativo;
-      return true;
-    });
+  const simulateBlock = (reason: string, student?: Student | null) => {
     setState("blocked");
-    setBlockReason(reason);
-    setCurrentStudent(student || STUDENTS[0]);
+    setBlockReason(reason as BlockReason);
+    setCurrentStudent(student || null);
     resetToIdle();
   };
 
-  const filteredStudents = STUDENTS.filter(
-    (s) =>
-      s.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.matricula.includes(searchQuery)
-  );
-
-  const handleManualRelease = () => {
+  const handleManualRelease = async () => {
     if (!selectedStudent || !manualReason) return;
-    simulateSuccess(selectedStudent);
-    setShowSearchModal(false);
-    setSelectedStudent(null);
-    setManualReason("");
-    setSearchQuery("");
-    showNotification(`✅ Liberação manual registrada para ${selectedStudent.nome}`);
+    try {
+      await api.post(`/api/liberar-manual/`, { estudante_id: selectedStudent.id, motivo: manualReason });
+      simulateSuccess(selectedStudent);
+      setShowSearchModal(false);
+      setSelectedStudent(null);
+      setManualReason("");
+      setSearchQuery("");
+      showNotification(`✅ Liberação manual registrada para ${selectedStudent.nome}`);
+    } catch (error: any) {
+      showNotification(`❌ Erro: ${error.response?.data?.erro || "Não foi possível liberar a refeição"}`);
+    }
   };
 
   const handleOccurrence = () => {
@@ -111,17 +134,14 @@ export function CanteenPage() {
   };
 
   // Função central para processar o código
-  const processHexCode = (code: string) => {
-    const student = STUDENTS.find(s => 
-      s.biometricCodes.includes(code.toUpperCase())
-    );
-    
-    if (student) {
-      simulateSuccess(student);
-    } else {
-      simulateBlock("Biometria não cadastrada");
+  const processHexCode = async (code: string) => {
+    try {
+      const res = await api.post('/api/biometria/identificar/', { digital: code });
+      simulateSuccess(res.data.aluno || res.data);
+    } catch (error: any) {
+      const motivo = error.response?.data?.erro || error.response?.data?.motivo || "Biometria não cadastrada";
+      simulateBlock(motivo, error.response?.data?.aluno);
     }
-    
     setHexCode(""); // Limpa o campo após a leitura
   };
 
@@ -355,14 +375,13 @@ export function CanteenPage() {
         <div className="flex items-center gap-4 overflow-x-auto">
           <span className="text-slate-400 text-xs font-medium flex-shrink-0">ÚLTIMAS ENTRADAS:</span>
           {consumedToday.slice(-5).reverse().map((record, idx) => {
-            const student = STUDENTS.find((s) => s.id === record.studentId);
             return (
               <div key={idx} className="flex items-center gap-2 flex-shrink-0 bg-slate-700 rounded-lg px-3 py-1.5">
                 <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
                   <User className="w-3 h-3 text-white" />
                 </div>
                 <span className="text-white text-xs font-medium">
-                  {student ? student.nome.split(" ")[0] : "Aluno"}
+                  {record.nome ? record.nome.split(" ")[0] : "Aluno"}
                 </span>
                 <span className="text-slate-400 text-xs">{record.time}</span>
               </div>

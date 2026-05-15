@@ -25,21 +25,9 @@ import {
   FileCheck,
   ChevronRight,
 } from "lucide-react";
-import {
-  HOURLY_DATA,
-  WEEKLY_DATA,
-  CLASS_DATA,
-  OCCURRENCES,
-  MEAL_RECORDS_TODAY,
-} from "../mockData";
+import { api } from "../services/api";
 
 const PIE_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EF4444", "#EC4899", "#06B6D4", "#84CC16"];
-
-// Pre-compute class data with fill colors to avoid Cell children (which cause recharts key conflicts)
-const CLASS_DATA_COLORED = CLASS_DATA.map((item, index) => ({
-  ...item,
-  fill: PIE_COLORS[index % PIE_COLORS.length],
-}));
 
 const TAB_IDS = ["empresa", "fiscal", "gestao"] as const;
 type TabId = (typeof TAB_IDS)[number];
@@ -78,14 +66,42 @@ const StatCard = ({
 );
 
 function EmpresaTab() {
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>({
+    hoje: { refeicoes: 0, meta: 0, ativos: 0, comparecimento: "0%", pico: "--:--", pico_valor: 0, consumo_hora: [], ultimas_refeicoes: [] },
+    semana: { consumo_semana: [] }
+  });
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const [resHoje, resSemana] = await Promise.all([
+          api.get('/api/dashboard/hoje/'),
+          api.get('/api/dashboard/semana/')
+        ]);
+        setDashboardData({
+          hoje: resHoje.data,
+          semana: resSemana.data
+        });
+      } catch (error) {
+        console.error("Erro ao carregar dados da empresa", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboard();
+  }, []);
+
+  const { hoje, semana } = dashboardData;
+
   return (
     <div className="space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={UtensilsCrossed} label="Refeições Hoje" value={495} sub="Meta: 520" color="text-emerald-600" />
-        <StatCard icon={Users} label="Alunos Ativos" value={520} sub="Total matriculados" color="text-blue-600" />
-        <StatCard icon={TrendingUp} label="Comparecimento" value="95,2%" sub="↑ 2.1% vs ontem" color="text-violet-600" />
-        <StatCard icon={Clock} label="Pico de Acesso" value="12:00" sub="187 refeições na hora" color="text-amber-600" />
+        <StatCard icon={UtensilsCrossed} label="Refeições Hoje" value={hoje.refeicoes || 0} sub={`Meta: ${hoje.meta || 0}`} color="text-emerald-600" />
+        <StatCard icon={Users} label="Alunos Ativos" value={hoje.ativos || 0} sub="Total matriculados" color="text-blue-600" />
+        <StatCard icon={TrendingUp} label="Comparecimento" value={hoje.comparecimento || "0%"} sub="Hoje" color="text-violet-600" />
+        <StatCard icon={Clock} label="Pico de Acesso" value={hoje.pico || "--:--"} sub={`${hoje.pico_valor || 0} refeições na hora`} color="text-amber-600" />
       </div>
 
       {/* Bar Chart - Hourly */}
@@ -93,13 +109,13 @@ function EmpresaTab() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-gray-800 font-semibold">Consumo por Hora — Hoje</h3>
-            <p className="text-gray-400 text-xs mt-0.5">31/03/2026</p>
+            <p className="text-gray-400 text-xs mt-0.5">{new Date().toLocaleDateString("pt-BR")}</p>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={HOURLY_DATA} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+          <BarChart data={hoje.consumo_hora || []} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-            <XAxis dataKey="hour" tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+            <XAxis dataKey="hora" tick={{ fontSize: 11, fill: "#9CA3AF" }} />
             <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} />
             <Tooltip
               contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}
@@ -123,7 +139,7 @@ function EmpresaTab() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={WEEKLY_DATA} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+          <LineChart data={semana.consumo_semana || []} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
             <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
             <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} domain={[380, 560]} />
@@ -151,22 +167,22 @@ function EmpresaTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {MEAL_RECORDS_TODAY.map((r) => (
+              {(hoje.ultimas_refeicoes || []).map((r: any) => (
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-700 font-medium">{r.nome}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{r.serie}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{r.time}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{r.turma || r.serie}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{r.hora || r.time}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      r.type === "biometric"
+                      r.tipo === "biometric" || r.type === "biometric"
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-amber-100 text-amber-700"
                     }`}>
-                      {r.type === "biometric" ? "Biométrica" : "Manual"}
+                      {r.tipo === "biometric" || r.type === "biometric" ? "Biométrica" : "Manual"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 text-right font-medium">
-                    R$ {r.value.toFixed(2).replace(".", ",")}
+                    R$ {Number(r.valor || r.value || 0).toFixed(2).replace(".", ",")}
                   </td>
                 </tr>
               ))}
@@ -180,14 +196,22 @@ function EmpresaTab() {
 
 function FiscalTab() {
   const [locked, setLocked] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState("Marco 2026");
+  const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [monthlyData, setMensalData] = useState<any>({ semanas: [], totais: { normais: 0, manuais: 0, total: 0, valor: 0 }, pendente_manuais: 0 });
 
-  const weeklyTotals = [
-    { semana: "23/03 – 29/03/2026", normais: 2340, manuais: 41, total: 2381, valor: 10714.50 },
-    { semana: "16/03 – 22/03/2026", normais: 2190, manuais: 38, total: 2228, valor: 10026.00 },
-    { semana: "09/03 – 15/03/2026", normais: 2280, manuais: 52, total: 2332, valor: 10494.00 },
-    { semana: "02/03 – 08/03/2026", normais: 2310, manuais: 45, total: 2355, valor: 10597.50 },
-  ];
+  useEffect(() => {
+    const fetchMensal = async () => {
+      try {
+        const res = await api.get(`/api/dashboard/mensal/?mes=${selectedPeriod}`);
+        if (res.data) {
+          setMensalData(res.data);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados fiscais", error);
+      }
+    };
+    fetchMensal();
+  }, [selectedPeriod]);
 
   return (
     <div className="space-y-5">
@@ -204,11 +228,7 @@ function FiscalTab() {
               onChange={(e) => setSelectedPeriod(e.target.value)}
               disabled={locked}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none disabled:opacity-50"
-            >
-              <option>Marco 2026</option>
-              <option>Fevereiro 2026</option>
-              <option>Janeiro 2026</option>
-            </select>
+            />
             <button
               onClick={() => setLocked(true)}
               disabled={locked}
@@ -241,7 +261,7 @@ function FiscalTab() {
       {/* Weekly Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-gray-800 font-semibold">Totais por Semana — {selectedPeriod}</h3>
+          <h3 className="text-gray-800 font-semibold">Totais por Semana</h3>
           {locked && <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">🔒 Período Validado</span>}
         </div>
         <div className="overflow-x-auto">
@@ -256,9 +276,9 @@ function FiscalTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {weeklyTotals.map((row, i) => (
+              {(monthlyData.semanas || []).map((row: any, i: number) => (
                 <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 text-sm text-gray-700 font-medium">{row.semana}</td>
+                  <td className="px-5 py-3 text-sm text-gray-700 font-medium">{row.periodo || row.semana}</td>
                   <td className="px-5 py-3 text-center">
                     <span className="text-sm text-emerald-700 font-semibold">{row.normais}</span>
                   </td>
@@ -279,10 +299,10 @@ function FiscalTab() {
             <tfoot className="bg-slate-800">
               <tr>
                 <td className="px-5 py-3 text-sm text-white font-bold">TOTAL DO MÊS</td>
-                <td className="px-5 py-3 text-center text-sm text-emerald-300 font-bold">9.120</td>
-                <td className="px-5 py-3 text-center text-sm text-amber-300 font-bold">176</td>
-                <td className="px-5 py-3 text-center text-sm text-white font-bold">9.296</td>
-                <td className="px-5 py-3 text-right text-sm text-white font-bold">R$ 41.832,00</td>
+                <td className="px-5 py-3 text-center text-sm text-emerald-300 font-bold">{monthlyData.totais?.normais || 0}</td>
+                <td className="px-5 py-3 text-center text-sm text-amber-300 font-bold">{monthlyData.totais?.manuais || 0}</td>
+                <td className="px-5 py-3 text-center text-sm text-white font-bold">{monthlyData.totais?.total || 0}</td>
+                <td className="px-5 py-3 text-right text-sm text-white font-bold">R$ {Number(monthlyData.totais?.valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
               </tr>
             </tfoot>
           </table>
@@ -293,9 +313,9 @@ function FiscalTab() {
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-amber-800 text-sm font-semibold">Atenção: 176 liberações manuais no período</p>
+          <p className="text-amber-800 text-sm font-semibold">Atenção: {monthlyData.pendente_manuais || 0} liberações manuais no período</p>
           <p className="text-amber-600 text-xs mt-1">
-            Representa 1,89% do total de refeições. Dentro do limite aceitável de 5%. 
+            Representa uma parcela do total de refeições. Dentro do limite aceitável. 
             Todas as liberações manuais possuem motivo registrado e operador identificado.
           </p>
         </div>
@@ -305,14 +325,37 @@ function FiscalTab() {
 }
 
 function GestaoTab() {
+  const [dataGestao, setDataGestao] = useState<any>({
+    stats: { comparecimento: "0%", turmas: 0, ocorrencias_mes: 0, taxa_bio: "0%" },
+    consumo_turmas: [],
+    ocorrencias: []
+  });
+
+  useEffect(() => {
+    const fetchGestao = async () => {
+      try {
+        const res = await api.get('/api/dashboard/hoje/?visao=gestao');
+        if (res.data) setDataGestao(res.data);
+      } catch (error) {
+        console.error("Erro ao carregar dados de gestão", error);
+      }
+    };
+    fetchGestao();
+  }, []);
+
+  const classDataColored = (dataGestao.consumo_turmas || []).map((item: any, index: number) => ({
+    ...item,
+    fill: PIE_COLORS[index % PIE_COLORS.length],
+  }));
+
   return (
     <div className="space-y-5">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={TrendingUp} label="Comparecimento Geral" value="95,2%" sub="Meta: 90%" color="text-emerald-600" />
-        <StatCard icon={Users} label="Turmas Monitoradas" value={8} sub="Todas as turmas" color="text-blue-600" />
-        <StatCard icon={AlertTriangle} label="Ocorrências (mês)" value={12} sub="↓ 3 vs mês anterior" color="text-amber-600" />
-        <StatCard icon={CheckCircle2} label="Taxa Biométrica" value="98,1%" sub="Sem falha" color="text-violet-600" />
+        <StatCard icon={TrendingUp} label="Comparecimento Geral" value={dataGestao.stats?.comparecimento || "0%"} sub="Meta: 90%" color="text-emerald-600" />
+        <StatCard icon={Users} label="Turmas Monitoradas" value={dataGestao.stats?.turmas || 0} sub="Todas as turmas" color="text-blue-600" />
+        <StatCard icon={AlertTriangle} label="Ocorrências (mês)" value={dataGestao.stats?.ocorrencias_mes || 0} sub="No mês" color="text-amber-600" />
+        <StatCard icon={CheckCircle2} label="Taxa Biométrica" value={dataGestao.stats?.taxa_bio || "0%"} sub="Sem falha" color="text-violet-600" />
       </div>
 
       {/* Pie Chart - Classes */}
@@ -322,7 +365,7 @@ function GestaoTab() {
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
-                data={CLASS_DATA_COLORED}
+                data={classDataColored}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -338,10 +381,10 @@ function GestaoTab() {
           </ResponsiveContainer>
           {/* Legend */}
           <div className="grid grid-cols-2 gap-1 mt-2">
-            {CLASS_DATA_COLORED.map((item) => (
-              <div key={`legend-${item.name}`} className="flex items-center gap-2">
+            {classDataColored.map((item: any) => (
+              <div key={`legend-${item.name || item.nome}`} className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.fill }} />
-                <span className="text-xs text-gray-600">{item.name}: {item.value}</span>
+                <span className="text-xs text-gray-600">{item.name || item.nome}: {item.value || item.valor}</span>
               </div>
             ))}
           </div>
@@ -356,27 +399,27 @@ function GestaoTab() {
             </button>
           </div>
           <div className="space-y-3">
-            {OCCURRENCES.map((occ) => (
+            {(dataGestao.ocorrencias || []).map((occ: any) => (
               <div key={occ.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
                 <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                  occ.type === "Falha Biométrica" ? "bg-amber-400" :
-                  occ.type === "Comportamento" ? "bg-red-400" : "bg-blue-400"
+                  occ.tipo === "Falha Biométrica" || occ.type === "Falha Biométrica" ? "bg-amber-400" :
+                  occ.tipo === "Comportamento" || occ.type === "Comportamento" ? "bg-red-400" : "bg-blue-400"
                 }`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      occ.type === "Falha Biométrica" ? "bg-amber-100 text-amber-700" :
-                      occ.type === "Comportamento" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                      occ.tipo === "Falha Biométrica" || occ.type === "Falha Biométrica" ? "bg-amber-100 text-amber-700" :
+                      occ.tipo === "Comportamento" || occ.type === "Comportamento" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
                     }`}>
-                      {occ.type}
+                      {occ.tipo || occ.type}
                     </span>
-                    <span className="text-xs text-gray-400 flex-shrink-0">{occ.date} {occ.time}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{occ.data || occ.date} {occ.hora || occ.time}</span>
                   </div>
-                  <p className="text-gray-600 text-xs mt-1 leading-relaxed">{occ.description}</p>
+                  <p className="text-gray-600 text-xs mt-1 leading-relaxed">{occ.descricao || occ.description}</p>
                   {occ.nome && (
                     <p className="text-gray-400 text-xs mt-1">Aluno: {occ.nome}</p>
                   )}
-                  <p className="text-gray-400 text-xs">Operador: {occ.operator}</p>
+                  <p className="text-gray-400 text-xs">Operador: {occ.operador || occ.operator}</p>
                 </div>
               </div>
             ))}
@@ -388,18 +431,18 @@ function GestaoTab() {
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="text-gray-800 font-semibold mb-4">Consumo por Turma — Hoje</h3>
         <div className="space-y-3">
-          {CLASS_DATA_COLORED.map((item) => {
-            const maxVal = Math.max(...CLASS_DATA.map((d) => d.value));
-            const pct = Math.round((item.value / maxVal) * 100);
+          {classDataColored.map((item: any) => {
+            const maxVal = Math.max(...classDataColored.map((d: any) => d.value || d.valor || 0));
+            const pct = maxVal ? Math.round(((item.value || item.valor || 0) / maxVal) * 100) : 0;
             return (
-              <div key={`bar-${item.name}`} className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 w-16 shrink-0 text-right">{item.name}</span>
+              <div key={`bar-${item.name || item.nome}`} className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 w-16 shrink-0 text-right">{item.name || item.nome}</span>
                 <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
                   <div
                     className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-500"
                     style={{ width: `${pct}%`, backgroundColor: item.fill }}
                   >
-                    <span className="text-white text-xs font-semibold">{item.value}</span>
+                    <span className="text-white text-xs font-semibold">{item.value || item.valor}</span>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   Download,
@@ -10,7 +10,7 @@ import {
   TrendingUp,
   Printer,
 } from "lucide-react";
-import { REPORT_DATA } from "../mockData";
+import { api } from "../services/api";
 
 export function ReportsPage() {
   const [startDate, setStartDate] = useState("2026-03-01");
@@ -18,20 +18,24 @@ export function ReportsPage() {
   const [view, setView] = useState<"table" | "summary">("table");
   const [loading, setLoading] = useState(false);
   const [hasResult, setHasResult] = useState(true);
+  const [reportData, setReportData] = useState<any[]>([]);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await api.get(`/api/dashboard/mensal/?inicio=${startDate}&fim=${endDate}`);
+      setReportData(res.data.semanas || res.data || []);
+    } catch (error) {
+      console.error("Erro ao buscar relatório", error);
+    } finally {
       setLoading(false);
-      setHasResult(true);
-      setView("table");
-    }, 800);
+    }
   };
 
-  const totalNormais = REPORT_DATA.reduce((acc, r) => acc + r.normais, 0);
-  const totalManuais = REPORT_DATA.reduce((acc, r) => acc + r.manuais, 0);
-  const totalRefeicoes = REPORT_DATA.reduce((acc, r) => acc + r.total, 0);
-  const totalValor = REPORT_DATA.reduce((acc, r) => acc + r.valor, 0);
+  const totalNormais = reportData.reduce((acc, r) => acc + (r.normais || 0), 0);
+  const totalManuais = reportData.reduce((acc, r) => acc + (r.manuais || 0), 0);
+  const totalRefeicoes = reportData.reduce((acc, r) => acc + (r.total || 0), 0);
+  const totalValor = reportData.reduce((acc, r) => acc + (r.valor || 0), 0);
   const valorUnitario = 4.50;
 
   return (
@@ -192,27 +196,27 @@ export function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {REPORT_DATA.map((row, i) => (
+                  {reportData.map((row, i) => (
                     <tr key={i} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-5 py-4 text-sm text-gray-700 font-medium">{row.periodo}</td>
+                      <td className="px-5 py-4 text-sm text-gray-700 font-medium">{row.periodo || row.semana}</td>
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span className="text-sm text-emerald-700 font-semibold">{row.normais.toLocaleString("pt-BR")}</span>
+                          <span className="text-sm text-emerald-700 font-semibold">{(row.normais || 0).toLocaleString("pt-BR")}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <div className="w-2 h-2 rounded-full bg-amber-400" />
-                          <span className="text-sm text-amber-700 font-semibold">{row.manuais}</span>
+                          <span className="text-sm text-amber-700 font-semibold">{row.manuais || 0}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 text-center">
-                        <span className="text-sm text-gray-800 font-bold">{row.total.toLocaleString("pt-BR")}</span>
+                        <span className="text-sm text-gray-800 font-bold">{(row.total || 0).toLocaleString("pt-BR")}</span>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <span className="text-sm text-gray-800 font-bold">
-                          R$ {row.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          R$ {Number(row.valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-center">

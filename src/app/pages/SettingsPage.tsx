@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Clock,
   DollarSign,
@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   Info,
 } from "lucide-react";
-import { USERS, type User } from "../mockData";
+import { type User } from "../types";
+import { api } from "../services/api";
 
 type Role = User["role"];
 const ROLES: Role[] = ["Operador", "Empresa", "Fiscal", "Gestão", "Admin"];
@@ -35,7 +36,7 @@ const ROLE_PERMISSIONS: Record<Role, string[]> = {
 };
 
 export function SettingsPage() {
-  const [users, setUsers] = useState<User[]>(USERS);
+  const [users, setUsers] = useState<User[]>([]);
   const [saved, setSaved] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -51,6 +52,18 @@ export function SettingsPage() {
   // New user form
   const [newUser, setNewUser] = useState({ nome: "", email: "", role: "Operador" as Role });
   const [editRole, setEditRole] = useState<Role>("Operador");
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await api.get('/api/usuarios/');
+        if (res.data) setUsers(res.data.results || res.data);
+      } catch (error) {
+        console.error("Erro ao carregar usuários da API", error);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleSave = () => {
     setSaved(true);
