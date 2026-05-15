@@ -83,6 +83,7 @@ export function StudentsPage() {
     foto: null as File | null,
   });
   const [turmas, setTurmas] = useState<any[]>([]);
+  const [cursos, setCursos] = useState<any[]>([]);
   const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
   const [novaTurmaNome, setNovaTurmaNome] = useState("");
   const carregarTurmas = async () => {
@@ -104,8 +105,26 @@ export function StudentsPage() {
     }
   };
 
+  const carregarCursos = async () => {
+    try {
+      const response = await api.get('/api/cursos/');
+      console.log("Cursos recebidos da API:", response.data);
+      
+      let data = response.data;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        data = data.results || data.data || data.cursos || Object.values(data).find(Array.isArray) || [];
+      }
+      
+      setCursos(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Erro ao buscar cursos", error);
+      setCursos([]);
+    }
+  };
+
   useEffect(() => {
     carregarTurmas();
+    carregarCursos();
   }, []);
 
   const handleSaveTurma = async () => {
@@ -418,7 +437,13 @@ const openAdd = () => {
 
                   <td className="p-4">
                     <div className="flex flex-col">
-                      <span className="text-sm text-gray-700 font-medium">{student.curso || '-'}</span>
+                      <span className="text-sm text-gray-700 font-medium">
+                        {(() => {
+                          const c = cursos.find(c => String(c.id) === String(student.curso));
+                          if (!c) return student.curso || '-';
+                          return c.nome || c.name || student.curso;
+                        })()}
+                      </span>
                       <span className="text-xs text-gray-400">
                         {(() => {
                           const t = turmas.find(t => String(t.id) === String(student.turma));
@@ -576,10 +601,11 @@ const openAdd = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white"
                   >
                     <option value="">Selecione o curso...</option>
-                    <option value="Ensino Fundamental">Ensino Fundamental</option>
-                    <option value="Ensino Médio">Ensino Médio</option>
-                    <option value="Técnico Integrado">Técnico Integrado</option>
-                    <option value="Educação Infantil">Educação Infantil</option>
+                    {cursos.map((c) => (
+                      <option key={c.id || c.nome || c} value={c.id || c.nome || c}>
+                        {c.nome || c.name || (typeof c === 'string' ? c : "Curso Sem Nome")}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
