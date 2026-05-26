@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Eye, EyeOff, ShieldCheck, Chrome, Lock, Mail, AlertTriangle } from "lucide-react";
@@ -86,8 +87,25 @@ export function LoginPage() {
       } else {
         navigate('/dashboard'); // Administrador/Empresa vê tudo
       }
-    } catch (err) {
-      setError("Credenciais incorretas!");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const backendMessage =
+          err.response?.data?.error || err.response?.data?.detail || err.message;
+
+        if (!err.response) {
+          setError("Não foi possível conectar ao servidor. Verifique sua rede e tente novamente.");
+        } else if (err.response.status === 401) {
+          setError(backendMessage || "Credenciais incorretas.");
+        } else if (err.response.status === 400) {
+          setError(backendMessage || "Requisição inválida. Verifique o e-mail e a senha.");
+        } else if (err.response.status >= 500) {
+          setError("Erro no servidor. Tente novamente mais tarde.");
+        } else {
+          setError(backendMessage || "Erro ao autenticar. Tente novamente.");
+        }
+      } else {
+        setError("Erro inesperado ao tentar autenticar.");
+      }
     } finally {
       setLoading(false);
     }
