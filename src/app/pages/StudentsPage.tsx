@@ -12,8 +12,6 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -67,7 +65,6 @@ export function StudentsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [showBiometricCodes, setShowBiometricCodes] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     nome: "",
@@ -76,9 +73,6 @@ export function StudentsPage() {
     curso: "",
     turma: "",
     ativo: true,
-    bio1: "",
-    bio2: "",
-    bio3: "",
     photoPreview: "",
     foto: null as File | null,
   });
@@ -147,11 +141,7 @@ export function StudentsPage() {
 
 const openAdd = () => {
   setEditingStudent(null);
-  setFormData({
-    nome: "", matricula: "", data_nascimento: "", 
-    curso: "", turma: "", ativo: true, bio1: "", bio2: "", 
-    bio3: "", photoPreview: "", foto: null 
-  });
+  setFormData({ nome: "", matricula: "", data_nascimento: "", curso: "", turma: "", ativo: true, photoPreview: "", foto: null });
   setShowModal(true);
 };
 
@@ -179,10 +169,7 @@ const openAdd = () => {
       curso: student.curso || "",
       turma: student.turma || "",
       ativo: student.ativo,
-      bio1: student.biometricCodes?.[0] || "",
-      bio2: student.biometricCodes?.[1] || "",
-      bio3: student.biometricCodes?.[2] || "",
-      photoPreview: student.foto || "",
+      photoPreview: student.foto_url || student.foto || "",
       foto: null,
     });
     setShowModal(true);
@@ -199,9 +186,7 @@ const openAdd = () => {
       payload.append("curso", formData.curso);
       payload.append("turma", formData.turma);
       payload.append("ativo", String(formData.ativo));
-      if (formData.bio1) payload.append("bio1", formData.bio1);
-      if (formData.bio2) payload.append("bio2", formData.bio2);
-      if (formData.bio3) payload.append("bio3", formData.bio3);
+      // Backend não expõe campos biométricos diretamente no model Student
 
       if (formData.foto) {
         payload.append("foto", formData.foto);
@@ -274,8 +259,6 @@ const openAdd = () => {
           turma: turma?.trim() || "",
           ativo: true,
           foto: "", // Fotos não vêm no CSV
-          biometricCodes: [], // Biometria será cadastrada depois
-          hasConsumedToday: false,
         };
       });
 
@@ -421,7 +404,7 @@ const openAdd = () => {
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-100">
                         <ImageWithFallback
-                          src={student.foto} 
+                          src={student.foto_url || student.foto} 
                           alt={student.nome} 
                           className="w-full h-full object-cover"
                         />
@@ -443,7 +426,7 @@ const openAdd = () => {
                         })()}
                       </span>
                       <span className="text-xs text-gray-400">
-                        {(() => {
+                        {student.turma_nome || (() => {
                           const t = turmas.find(t => String(t.id) === String(student.turma));
                           if (!t) return student.turma || 'Sem turma';
                           return t.nome || t.serie || t.name || t.descricao || student.turma;
@@ -646,48 +629,7 @@ const openAdd = () => {
                 </div>
               </div>
 
-              {/* Biometric Codes */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Códigos Hexadecimais da Digital
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowBiometricCodes(!showBiometricCodes)}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
-                  >
-                    {showBiometricCodes ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    {showBiometricCodes ? "Ocultar" : "Exibir"}
-                  </button>
-                </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700">
-                    Dados biométricos sensíveis (LGPD Art. 5º, II). Acesso restrito a operadores autorizados. 
-                    Registro de acesso auditado.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { label: "Digital 1 (Indicador)", key: "bio1" as keyof typeof formData },
-                    { label: "Digital 2 (Médio)", key: "bio2" as keyof typeof formData },
-                    { label: "Digital 3 (Backup)", key: "bio3" as keyof typeof formData },
-                  ].map(({ label, key }) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 w-36 flex-shrink-0">{label}</span>
-                      <input
-                        type={showBiometricCodes ? "text" : "password"}
-                        value={formData[key]}
-                        onChange={(e) => setFormData({ ...formData, [key]: e.target.value.toUpperCase() })}
-                        placeholder="Ex: A3F8C2D1"
-                        maxLength={1024}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 font-mono"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Campos de biometria removidos - backend não expõe esses campos no model Student */}
             </div>
 
             <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
@@ -740,7 +682,7 @@ const openAdd = () => {
                 <p className="text-sm font-semibold text-gray-700 mb-2">Formato esperado do CSV:</p>
                 <pre className="text-xs text-gray-500 font-mono bg-white border border-gray-200 rounded-lg p-3 overflow-x-auto">
                   nome,matricula,data_nascimento,curso,turma{"\n"}
-                  Mariana,2026001,2010-05-14,9º Ano,Fundamental,Turma A
+                  Mariana,2026001,2010-05-14,Fundamental,Turma A
                 </pre>
               </div>
               
