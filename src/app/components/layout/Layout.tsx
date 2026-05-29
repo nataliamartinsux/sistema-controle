@@ -26,6 +26,26 @@ export function Layout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navigate = useNavigate();
   const papelDoUsuario = localStorage.getItem('sysmerenda_papel');
+  const userName = localStorage.getItem('sysmerenda_nome') || localStorage.getItem('sysmerenda_email') || 'SysMerenda';
+
+  const ROLE_LABELS: Record<string, string> = {
+    admin: 'Admin',
+    operador: 'Operador',
+    empresa: 'Empresa',
+    gestor: 'Gestor',
+    fiscal: 'Fiscal',
+    cantina: 'Cantina',
+    responsavel: 'Responsável',
+  };
+
+  const userRoleLabel = papelDoUsuario ? ROLE_LABELS[papelDoUsuario] || papelDoUsuario : 'Usuário';
+
+  const userInitials = userName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('') || userRoleLabel.slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
     navigate("/login");
@@ -108,11 +128,11 @@ export function Layout() {
         <div className="p-3 border-t border-slate-700">
           <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 cursor-pointer">
             <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-              AS
+              {userInitials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">Admin Sistema</p>
-              <p className="text-slate-400 text-xs truncate">admin@sysmerenda.gov.br</p>
+              <p className="text-white text-sm font-medium truncate">{userName}</p>
+              <p className="text-slate-400 text-xs truncate">Perfil: {userRoleLabel}</p>
             </div>
           </div>
           <button
@@ -148,16 +168,16 @@ export function Layout() {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <div className="w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                  AS
+                  {userInitials}
                 </div>
-                <span className="hidden sm:block">Admin</span>
+                <span className="hidden sm:block">{userRoleLabel}</span>
                 <ChevronDown className="w-4 h-4 text-gray-400" />
               </button>
               {userMenuOpen && (
                 <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-800">Admin Sistema</p>
-                    <p className="text-xs text-gray-500">Perfil: Admin</p>
+                    <p className="text-sm font-medium text-gray-800">{userName}</p>
+                    <p className="text-xs text-gray-500">Perfil: {userRoleLabel}</p>
                   </div>
                   <button
                     className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"

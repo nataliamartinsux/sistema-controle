@@ -583,8 +583,11 @@ const openAdd = () => {
                   >
                     <option value="">Selecione o curso...</option>
                     {cursos.map((c) => (
-                      <option key={c.id || c.nome || c} value={c.id || c.nome || c}>
-                        {c.nome || c.name || (typeof c === 'string' ? c : "Curso Sem Nome")}
+                      <option
+                        key={c.id ?? c.nome ?? c.curso ?? c}
+                        value={c.id ?? c.nome ?? c.curso ?? c}
+                      >
+                        {c.nome ?? c.curso ?? c.name ?? (typeof c === 'string' ? c : "Curso Sem Nome")}
                       </option>
                     ))}
                   </select>
@@ -602,8 +605,11 @@ const openAdd = () => {
                     >
                       <option value="">Selecione a turma...</option>
                       {turmas.map((t) => (
-                        <option key={t.id || t.nome || t} value={t.id || t.nome || t}>
-                          {t.nome || t.serie || t.name || t.descricao || (typeof t === 'string' ? t : "Turma Sem Nome")}
+                        <option
+                          key={t.id ?? t.nome ?? t.turma_nome ?? t}
+                          value={t.id ?? t.nome ?? t.turma_nome ?? t}
+                        >
+                          {t.nome ?? t.turma_nome ?? t.serie ?? t.name ?? t.descricao ?? (typeof t === 'string' ? t : "Turma Sem Nome")}
                         </option>
                       ))}
                     </select>
