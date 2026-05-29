@@ -15,21 +15,97 @@ import { api } from "../services/api";
 export function ReportsPage() {
   const [startDate, setStartDate] = useState("2026-03-01");
   const [endDate, setEndDate] = useState("2026-03-31");
+  const [reportType, setReportType] = useState("mensal");
   const [view, setView] = useState<"table" | "summary">("table");
   const [loading, setLoading] = useState(false);
   const [hasResult, setHasResult] = useState(true);
   const [reportData, setReportData] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+
+  useEffect(() => {
+    // Busca a lista de alunos para popular o seletor quando a tela carregar
+    const fetchStudents = async () => {
+      try {
+        const response = await api.get('/api/estudantes/');
+        const data = response.data.results || response.data;
+        if (Array.isArray(data)) {
+          setStudents(data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar alunos:", error);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   const handleSearch = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/api/dashboard/mensal/?inicio=${startDate}&fim=${endDate}`);
+      const res = await api.get(`/api/dashboard/mensal/?inicio=${startDate}&fim=${endDate}&tipo=${reportType}`);
       setReportData(res.data.semanas || res.data || []);
     } catch (error) {
       console.error("Erro ao buscar relatório", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExport = async (format: "pdf" | "csv") => {
+    try {
+      // Define a rota base dinamicamente com base no tipo selecionado
+      let endpoint = `/api/relatorios/${reportType}/`;
+
+      // Para o relatório por estudante, o backend espera um ID (ex: <int:estudante_id>).
+      if (reportType === "estudante") {
+        if (!selectedStudentId) {
+          alert("Por favor, selecione um estudante para gerar o relatório.");
+          return;
+        }
+        endpoint = `/api/relatorios/estudante/${selectedStudentId}/`;
+      }
+
+      // Define os parâmetros da requisição
+      let queryParams = `inicio=${startDate}&fim=${endDate}&formato=${format}`;
+      
+      // O backend para o relatório diário exige o parâmetro "data" no lugar de "inicio" e "fim"
+      if (reportType === "diario") {
+        queryParams = `data=${startDate}&formato=${format}`;
+      }
+
+      const response = await api.get(
+        `${endpoint}?${queryParams}`,
+        { responseType: "blob" }
+      );
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `relatorio_${reportType}_${startDate}_a_${endDate}.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error(`Erro ao exportar relatório em ${format}:`, error);
+      
+      let backendMsg = "Erro no servidor (verifique o terminal do Django).";
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          backendMsg = json.erro || json.error || json.detail || text;
+        } catch (e) {
+          backendMsg = `Status HTTP ${error.response?.status} - Falha ao gerar o arquivo.`;
+        }
+      }
+      
+      alert(`Erro na exportação em ${format.toUpperCase()}.\n\nMensagem do Backend: ${backendMsg}\n\nVerifique se a sua view do Django está configurada para gerar e retornar o arquivo.`);
+    }
+  };
+
+  const getLocalDateString = (date: Date) => {
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split("T")[0];
   };
 
   const totalNormais = reportData.reduce((acc, r) => acc + (r.normais || 0), 0);
@@ -60,6 +136,40 @@ export function ReportsPage() {
         </h3>
         <div className="flex flex-wrap items-end gap-4">
           <div>
+            <label className="block text-sm font-semibold text-gray-600 mb-1.5">Tipo de Relatório</label>
+            <select
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value)}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white"
+            >
+              <option value="diario">Diário</option>
+              <option value="mensal">Mensal</option>
+              <option value="estudante">Por Estudante</option>
+              <option value="operador">Por Operador</option>
+              <option value="excecoes">Exceções (Liberações Manuais)</option>
+              <option value="pagamento">Para Pagamento (Faturamento)</option>
+            </select>
+          </div>
+          
+          {reportType === "estudante" && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-600 mb-1.5">Estudante</label>
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 bg-white max-w-xs truncate"
+              >
+                <option value="">Selecione o estudante...</option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.nome} ({student.matricula})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
             <label className="block text-sm font-semibold text-gray-600 mb-1.5">Data Início</label>
             <input
               type="date"
@@ -78,19 +188,47 @@ export function ReportsPage() {
             />
           </div>
           <div className="flex gap-2">
-            {["Semana atual", "Mês atual", "Mês anterior"].map((label) => (
-              <button
-                key={label}
-                className="px-3 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                {label}
-              </button>
-            ))}
+            <button
+              onClick={() => {
+                const today = new Date();
+                const start = new Date(today);
+                start.setDate(today.getDate() - today.getDay());
+                setStartDate(getLocalDateString(start));
+                setEndDate(getLocalDateString(today));
+              }}
+              className="px-3 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Semana atual
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date();
+                const start = new Date(today.getFullYear(), today.getMonth(), 1);
+                const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                setStartDate(getLocalDateString(start));
+                setEndDate(getLocalDateString(end));
+              }}
+              className="px-3 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Mês atual
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date();
+                const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const end = new Date(today.getFullYear(), today.getMonth(), 0);
+                setStartDate(getLocalDateString(start));
+                setEndDate(getLocalDateString(end));
+              }}
+              className="px-3 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Mês anterior
+            </button>
           </div>
           <button
             onClick={handleSearch}
             disabled={loading}
-            className="px-6 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:bg-slate-400 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+            className="px-6 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:bg-slate-400 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>
@@ -143,7 +281,7 @@ export function ReportsPage() {
               <p className="text-3xl font-bold text-slate-800">
                 R$ {totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-gray-400 text-xs mt-1">Março/2026</p>
+              <p className="text-gray-400 text-xs mt-1">Período selecionado</p>
             </div>
           </div>
 
@@ -153,19 +291,31 @@ export function ReportsPage() {
               <p className="text-gray-600 text-sm font-medium">Exportar relatório:</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">
+              <button 
+                onClick={handleSearch}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
+              >
                 <Eye className="w-4 h-4" />
-                Ver em Tela
+                Atualizar em Tela
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors">
+              <button 
+                onClick={() => handleExport("pdf")}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+              >
                 <Download className="w-4 h-4" />
                 Baixar PDF
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors">
+              <button 
+                onClick={() => handleExport("csv")}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+              >
                 <Download className="w-4 h-4" />
                 Baixar CSV
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-semibold transition-colors">
+              <button 
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+              >
                 <Printer className="w-4 h-4" />
                 Imprimir
               </button>
@@ -175,7 +325,7 @@ export function ReportsPage() {
           {/* Detailed Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-gray-800 font-semibold">Resumo por Semana — Março/2026</h3>
+              <h3 className="text-gray-800 font-semibold">Resumo de Relatório — {startDate} a {endDate}</h3>
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 Biométricas

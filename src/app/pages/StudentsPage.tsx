@@ -233,8 +233,18 @@ const openAdd = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
+    reader.onload = async (event) => {
+      const buffer = event.target?.result as ArrayBuffer;
+      const uint8Array = new Uint8Array(buffer);
+      
+      let text = "";
+      try {
+        // Tenta ler como UTF-8 primeiro
+        text = new TextDecoder("utf-8", { fatal: true }).decode(uint8Array);
+      } catch (err) {
+        // Se falhar (ex: Excel exporta CSV com acentos em Windows-1252), usa o padrão brasileiro
+        text = new TextDecoder("windows-1252").decode(uint8Array);
+      }
       
       // Quebra o texto por linhas e remove linhas vazias
       const rows = text.split('\n').filter(row => row.trim() !== '');
@@ -244,35 +254,194 @@ const openAdd = () => {
         return;
       }
 
-      // Ignora o cabeçalho (linha 0) e mapeia os dados
-      // O backend espera: nome, matricula, data_nascimento, curso, turma
-      const importedStudents: Student[] = rows.slice(1).map((row, index) => {
-        // Divide as colunas separadas por vírgula
-        const [nome, matricula, data_nascimento, curso, turma] = row.split(',');
-
-        return {
-          id: `import-${Date.now()}-${index}`, // ID provisório
-          nome: nome?.trim() || "Sem Nome",
-          matricula: matricula?.trim() || `SEM-MAT-${index}`,
-          data_nascimento: data_nascimento?.trim() || "2010-01-01",
-          curso: curso?.trim() || "",
-          turma: turma?.trim() || "",
-          ativo: true,
-          foto: "", // Fotos não vêm no CSV
-        };
-      });
-
-      // Adiciona os alunos novos na lista existente
-      setStudents(prev => [...prev, ...importedStudents]);
-      alert(`${importedStudents.length} alunos importados com sucesso!`);
+      setIsLoading(true);
       setShowImportModal(false);
+
+      let successCount = 0;
+      let errorCount = 0;
+      let errorDetails: string[] = [];
+
+      // Detecta o separador (CSV brasileiro geralmente usa ponto e vírgula)
+      const separator = rows[0].includes(';') ? ';' : ',';
+      const headers = rows[0].toLowerCase().split(separator).map(h => h.trim().replace(/['"]/g, ''));
+      
+      // Função de comparação que ignora acentos (ex: "Eletrotécnica" == "eletrotecnica")
+      const safeCompare = (a: string, b: string) => {
+        const norm = (str: string) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        return norm(a) === norm(b);
+      };
+
+      const hasHeaderKeywords = headers.some(h => h.includes("nome") || h.includes("aluno") || h.includes("curso") || h.includes("turma") || h.includes("matr"));
+      const hasDateInFirstRow = headers.some(h => /^\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(h));
+      
+      const isHeader = hasHeaderKeywords && !hasDateInFirstRow;
+      const startIndex = isHeader ? 1 : 0;
+
+      // Pegamos a primeira linha de DADOS para deduzir as posições inteligentemente
+      const firstDataRow = rows[startIndex].split(separator).map(c => c.trim().replace(/^["']|["']$/g, ''));
+
+      let idxNome = headers.findIndex(h => h.includes("nome") || h.includes("aluno") || h.includes("estudante"));
+      let idxMat = headers.findIndex(h => h.includes("matr") || h.includes("registro"));
+      let idxData = headers.findIndex(h => h.includes("data") || h.includes("nasc"));
+      let idxCurso = headers.findIndex(h => h.includes("curso"));
+      let idxTurma = headers.findIndex(h => h.includes("turma") || h.includes("serie") || h.includes("série") || h.includes("ano"));
+
+      // Corrige os índices analisando o conteúdo real da primeira linha de dados
+      if (!isHeader || idxData === -1 || (firstDataRow[idxData] && !/^\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(firstDataRow[idxData]))) {
+        const found = firstDataRow.findIndex(c => /^\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(c));
+        if (found !== -1) idxData = found;
+      }
+
+      if (!isHeader || idxCurso === -1 || (firstDataRow[idxCurso] && !cursos.some(c => safeCompare(c.nome || c.name || c.curso || String(c), firstDataRow[idxCurso])))) {
+        const found = firstDataRow.findIndex(c => cursos.some(curso => safeCompare(curso.nome || curso.name || curso.curso || String(curso), c)));
+        if (found !== -1) idxCurso = found;
+      }
+
+      if (!isHeader || idxTurma === -1 || (firstDataRow[idxTurma] && !turmas.some(t => safeCompare(t.nome || t.name || t.descricao || t.serie || String(t), firstDataRow[idxTurma])))) {
+        let found = firstDataRow.findIndex(c => turmas.some(t => safeCompare(t.nome || t.name || t.descricao || t.serie || String(t), c)));
+        if (found === -1) {
+           found = firstDataRow.findIndex(c => c.toLowerCase().includes("ano") || c.toLowerCase().includes("turma") || c.toLowerCase().includes("série"));
+        }
+        if (found !== -1) idxTurma = found;
+      }
+
+      const usedIndices = [idxData, idxCurso, idxTurma].filter(i => i !== -1);
+      
+      if (idxNome === -1) {
+        const found = firstDataRow.findIndex((c, i) => !usedIndices.includes(i) && isNaN(Number(c)));
+        if (found !== -1) { idxNome = found; usedIndices.push(idxNome); }
+      }
+      
+      if (idxMat === -1) {
+        const found = firstDataRow.findIndex((c, i) => !usedIndices.includes(i));
+        if (found !== -1) idxMat = found;
+      }
+
+      // Processa linha por linha a partir do startIndex
+      for (let i = startIndex; i < rows.length; i++) {
+        const row = rows[i];
+        // Trata separador e eventuais aspas nas células
+        const cols = row.split(separator).map(c => c.trim().replace(/^["']|["']$/g, ''));
+        
+        const nome = idxNome >= 0 ? cols[idxNome] || "" : "";
+        const matricula = idxMat >= 0 ? cols[idxMat] || "" : "";
+        const data_nascimento = idxData >= 0 ? cols[idxData] || "" : "";
+        const cursoStr = idxCurso >= 0 ? cols[idxCurso] || "" : "";
+        const turmaStr = idxTurma >= 0 ? cols[idxTurma] || "" : "";
+        
+        try {
+          const payload = new FormData();
+          payload.append("nome", nome || "Sem Nome");
+
+          // Garante que a matrícula tenha no máximo 20 caracteres
+          let matFinal = matricula || `MAT-${Math.floor(Math.random() * 100000)}-${i}`;
+          if (matFinal.length > 20) matFinal = matFinal.substring(0, 20);
+          payload.append("matricula", matFinal);
+
+          // Trata data no formato DD/MM/YYYY para o padrão do banco (YYYY-MM-DD)
+          let dataNascFormatada = "2010-01-01";
+          if (data_nascimento) {
+            if (data_nascimento.includes('/')) {
+              const parts = data_nascimento.split('/');
+              if (parts.length === 3) {
+                dataNascFormatada = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              }
+            } else {
+              dataNascFormatada = data_nascimento; // Pode já estar em YYYY-MM-DD
+            }
+          }
+          payload.append("data_nascimento", dataNascFormatada);
+
+          // Busca Curso/Turma de forma segura (ignora letras maiúsculas/minúsculas)
+          let cursoObj = cursos.find(c => safeCompare(c.nome || c.name || c.curso || String(c), cursoStr));
+          let turmaObj = turmas.find(t => safeCompare(t.nome || t.name || t.descricao || t.serie || String(t), turmaStr));
+
+          // Se o Curso não existe, tenta criar automaticamente no banco
+          if (cursoStr && !cursoObj) {
+            try {
+              // Envia várias chaves comuns, contornando a exigência de nomeclatura do backend
+              const res = await api.post("/api/cursos/", { nome: cursoStr, curso: cursoStr, descricao: cursoStr });
+              cursoObj = res.data;
+              cursos.push(cursoObj); // Adiciona na memória para os próximos alunos da planilha
+            } catch (err: any) {
+              let detail = "";
+              if (err.response?.data) {
+                if (typeof err.response.data === 'string' && err.response.data.toLowerCase().includes('<!doctype html>')) {
+                  detail = "A rota /api/cursos/ não existe no backend (Erro 404).";
+                } else {
+                  detail = typeof err.response.data === 'object' ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(' | ') : String(err.response.data);
+                }
+              }
+              throw new Error(`Criar curso '${cursoStr}' falhou. Backend devolveu: ${detail || err.message}`);
+            }
+          }
+
+          // Se a Turma não existe, tenta criar automaticamente no banco
+          if (turmaStr && !turmaObj) {
+            try {
+              // Envia várias chaves comuns, contornando a exigência de nomeclatura do backend
+              const res = await api.post("/api/turmas/", { nome: turmaStr, serie: turmaStr, descricao: turmaStr });
+              turmaObj = res.data;
+              turmas.push(turmaObj); // Adiciona na memória para os próximos alunos da planilha
+            } catch (err: any) {
+              let detail = "";
+              if (err.response?.data) {
+                if (typeof err.response.data === 'string' && err.response.data.toLowerCase().includes('<!doctype html>')) {
+                  detail = "A rota /api/turmas/ não existe no backend (Erro 404).";
+                } else {
+                  detail = typeof err.response.data === 'object' ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(' | ') : String(err.response.data);
+                }
+              }
+              throw new Error(`Criar turma '${turmaStr}' falhou. Backend devolveu: ${detail || err.message}`);
+            }
+          }
+
+          if (cursoObj?.id) payload.append("curso", cursoObj.id);
+          if (turmaObj?.id) payload.append("turma", turmaObj.id);
+          payload.append("ativo", "true");
+
+          await api.post("/api/estudantes/", payload, { headers: { "Content-Type": "multipart/form-data" } });
+          successCount++;
+        } catch (error: any) {
+          console.error(`Erro ao salvar estudante (linha ${i}):`, error);
+          errorCount++;
+
+          // Tenta extrair a mensagem de erro que o Django devolveu
+          let msg = error.message || "Erro desconhecido ou falha de conexão";
+          if (error.response?.data) {
+            if (typeof error.response.data === 'string' && error.response.data.toLowerCase().includes('<!doctype html>')) {
+               msg = "A rota não foi encontrada no backend (Erro 404)";
+            } else if (typeof error.response.data === 'object') {
+              msg = Object.entries(error.response.data)
+                .map(([key, val]) => `${key}: ${val}`)
+                .join(" | ");
+            } else {
+              msg = String(error.response.data);
+            }
+          }
+          if (errorDetails.length < 5) {
+            errorDetails.push(`Linha ${i + 1} (${nome || '?'}) -> ${msg}`);
+          }
+        }
+      }
+
+      let finalMsg = `Importação concluída!\n\n${successCount} alunos importados com sucesso.\n`;
+      if (errorCount > 0) {
+        finalMsg += `${errorCount} falhas.\n\nDetalhes dos erros encontrados (limitado a 5):\n${errorDetails.join('\n')}\n\nDica: Verifique se as turmas/cursos existem com esse exato nome no sistema.`;
+      }
+      alert(finalMsg);
+      
+      // Atualiza a lista buscando do banco novamente
+      fetchStudents();
+      carregarTurmas();
+      carregarCursos();
       
       // Limpa o input para permitir enviar o mesmo arquivo de novo se precisar
       e.target.value = ''; 
     };
 
-    // Lê o arquivo como texto
-    reader.readAsText(file);
+    // Lê o arquivo como buffer de bytes para tratar a codificação (UTF-8 ou Windows-1252)
+    reader.readAsArrayBuffer(file);
   };
 
   const toggleStatus = (id: string) => {
