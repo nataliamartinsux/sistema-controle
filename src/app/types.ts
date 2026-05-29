@@ -9,21 +9,20 @@ export type BlockReason =
   | "Fora do horário permitido";
 
 export interface Student {
-  id: number; // O Django retorna number para IDs (no mock era string)
+  id: string | number;
   nome: string;
   matricula: string;
   data_nascimento: string;
-  serie: string;
-  curso?: string;
-  turma?: number | string; // Agora que o backend tem CRUD de turma, ele pode retornar o ID (number)
+  curso?: string | number;
+  turma?: string | number;
+  turma_nome?: string | null;
+  foto?: string | null;
+  foto_url?: string | null;
   ativo: boolean;
-  
-  // Imagens
-  foto_url?: string | null; // O seu Django envia a URL pronta por esse campo
-  foto?: string | null;     // Mantido para compatibilidade com partes antigas do front
+  created_at?: string;
+  updated_at?: string;
 
-  // Propriedades auxiliares (usadas no front-end para lógica visual)
-  biometricCodes?: string[]; 
+  // Campos auxiliares utilizados pelo frontend
   hasConsumedToday?: boolean;
 }
 
