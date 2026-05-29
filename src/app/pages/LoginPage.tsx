@@ -80,12 +80,10 @@ export function LoginPage() {
       const papel = response.papel; // 'empresa', 'operador', 'cantina', 'responsavel'
 
       // Redireciona dependendo de quem logou
-      if (papel === 'cantina') {
-        navigate('/cantina'); // Manda o operador direto para a tela de biometria
-      } else if (papel === 'operador') {
-        navigate('/alunos'); // Operador vai gerenciar alunos
+      if (papel === 'cantina' || papel === 'operador') {
+        navigate('/cantina'); // Manda operador e cantina para a tela de operação diária
       } else {
-        navigate('/dashboard'); // Administrador/Empresa vê tudo
+        navigate('/dashboard'); // Administrador/Empresa/Gestor/Fiscal vê o dashboard
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

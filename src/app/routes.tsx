@@ -46,7 +46,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/cantina" replace /> },
       { 
         path: "cantina", 
-        element: <ProtectedRoute allowedRoles={['cantina', 'empresa']}><CanteenPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['cantina', 'empresa', 'operador']}><CanteenPage /></ProtectedRoute> 
       },
       { 
         path: "alunos", 
