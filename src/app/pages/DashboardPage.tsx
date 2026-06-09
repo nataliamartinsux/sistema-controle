@@ -69,13 +69,15 @@ const StatCard = ({
 
 function EmpresaTab() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<any>({
-    hoje: { refeicoes: 0, meta: 0, ativos: 0, comparecimento: "0%", pico: "--:--", pico_valor: 0, consumo_hora: [], ultimas_refeicoes: [] },
+    hoje: { refeicoes: 0, meta: 0, biometria: 0, manual: 0, vs_ontem: "", vs_semana: "", ativos: 0, comparecimento: "0%", pico: "--:--", pico_valor: 0, consumo_hora: [], ultimas_refeicoes: [] },
     semana: { consumo_semana: [] }
   });
 
   useEffect(() => {
     const fetchDashboard = async () => {
+      setError(null);
       try {
         const [resHoje, resSemana] = await Promise.all([
           api.get('/api/dashboard/hoje/'),
@@ -85,8 +87,9 @@ function EmpresaTab() {
           hoje: resHoje.data,
           semana: resSemana.data
         });
-      } catch (error) {
-        console.error("Erro ao carregar dados da empresa", error);
+      } catch (err) {
+        console.error("Erro ao carregar dados da empresa", err);
+        setError("Não foi possível carregar os dados do dashboard. Verifique a conexão com a API.");
       } finally {
         setLoading(false);
       }
@@ -94,69 +97,166 @@ function EmpresaTab() {
     fetchDashboard();
   }, []);
 
+  // Conexão WebSocket para dados em tempo real
+  useEffect(() => {
+    // Não abre a conexão se a carga inicial falhou ou ainda está carregando
+    if (loading || error) return;
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = api.defaults.baseURL ? new URL(api.defaults.baseURL).host : window.location.host;
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/dashboard/empresa/`;
+
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log("WebSocket conectado para o dashboard da empresa.");
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log("WebSocket data received:", message);
+
+        // O backend deve enviar uma mensagem com um tipo e os dados
+        if (message.type === 'dashboard_update' && message.data) {
+          const update = message.data;
+          setDashboardData((prev: any) => {
+            // Garante que a nova refeição só seja adicionada se existir
+            const newUltimasRefeicoes = update.nova_refeicao
+              ? [update.nova_refeicao, ...prev.hoje.ultimas_refeicoes]
+              : prev.hoje.ultimas_refeicoes;
+
+            return {
+              ...prev,
+              hoje: {
+                ...prev.hoje,
+                ...update, // Atualiza todos os contadores (refeicoes, biometria, manual)
+                ultimas_refeicoes: newUltimasRefeicoes.slice(0, 10),
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Erro ao processar mensagem do WebSocket:", e);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket desconectado.");
+      // Opcional: Lógica de reconexão pode ser adicionada aqui
+    };
+
+    socket.onerror = (err) => {
+      console.error("Erro no WebSocket:", err);
+    };
+
+    // Limpa a conexão ao desmontar o componente
+    return () => {
+      socket.close();
+    };
+  }, [loading, error]);
+
   const { hoje, semana } = dashboardData;
+  
+  const pieData = [
+    { name: "Biometria", value: hoje.biometria || 0 },
+    { name: "Manual", value: hoje.manual || 0 }
+  ];
+  const CHART_PIE_COLORS = ["#10B981", "#F59E0B"];
+
+  if (loading) {
+    return <div className="p-6 text-center text-gray-500">Carregando dados do dashboard...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+      <AlertTriangle className="w-5 h-5" /> {error}
+    </div>;
+  }
 
   return (
     <div className="space-y-5">
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={UtensilsCrossed} label="Refeições Hoje" value={hoje.refeicoes || 0} sub={`Meta: ${hoje.meta || 0}`} color="text-emerald-600" />
-        <StatCard icon={Users} label="Alunos Ativos" value={hoje.ativos || 0} sub="Total matriculados" color="text-blue-600" />
-        <StatCard icon={TrendingUp} label="Comparecimento" value={hoje.comparecimento || "0%"} sub="Hoje" color="text-violet-600" />
-        <StatCard icon={Clock} label="Pico de Acesso" value={hoje.pico || "--:--"} sub={`${hoje.pico_valor || 0} refeições na hora`} color="text-amber-600" />
-      </div>
-
-      {/* Bar Chart - Hourly */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-gray-800 font-semibold">Consumo por Hora — Hoje</h3>
-            <p className="text-gray-400 text-xs mt-0.5">{new Date().toLocaleDateString("pt-BR")}</p>
+      {/* Cards Superiores */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card Grande: Total Hoje (com indicador WebSocket) */}
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col justify-center relative overflow-hidden shadow-lg">
+          <div className="absolute top-4 right-4 flex items-center gap-2 bg-slate-800/50 px-2 py-1 rounded-full border border-slate-700/50">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Live</span>
+          </div>
+          <p className="text-slate-400 text-sm font-medium">Refeições Hoje (Ao Vivo)</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <p className="text-5xl font-black text-white tracking-tight">{hoje.refeicoes || 0}</p>
+            <p className="text-slate-500 text-sm font-medium">/ {hoje.meta || 520}</p>
+          </div>
+          <div className="mt-4 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+             <div 
+               className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
+               style={{ width: `${Math.min(((hoje.refeicoes || 0) / (hoje.meta || 1)) * 100, 100)}%` }} 
+             />
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={hoje.consumo_hora || []} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-            <XAxis dataKey="hora" tick={{ fontSize: 11, fill: "#9CA3AF" }} />
-            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} />
-            <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}
-              formatter={(value) => [value, "Refeições"]}
-            />
-            <Bar dataKey="consumo" fill="#10B981" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        
+        {/* Cards Comparativos */}
+        <StatCard icon={Calendar} label="Hoje vs Ontem" value={hoje.vs_ontem || "+0%"} sub="Diferença no mesmo horário" color={hoje.vs_ontem?.startsWith('-') ? "text-red-500" : "text-emerald-500"} />
+        <StatCard icon={TrendingUp} label="Hoje vs Semana Passada" value={hoje.vs_semana || "-0%"} sub="Variação na média do dia" color={hoje.vs_semana?.startsWith('-') ? "text-amber-500" : "text-blue-500"} />
       </div>
 
-      {/* Line Chart - Weekly */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-gray-800 font-semibold">Consumo — Últimos 7 dias</h3>
-            <p className="text-gray-400 text-xs mt-0.5">Comparativo com meta diária</p>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Bar Chart - Hourly (Ocupa 2/3 do espaço na web) */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-gray-800 font-semibold">Distribuição de Consumo por Hora</h3>
+              <p className="text-gray-400 text-xs mt-0.5">{new Date().toLocaleDateString("pt-BR")}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-xs text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-3 h-1 bg-emerald-500 rounded inline-block" />Consumo</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-1 bg-gray-300 rounded inline-block border border-dashed" />Previsto</span>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={hoje.consumo_hora || []} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+              <XAxis dataKey="hora" tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+              <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+              <Tooltip
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}
+                formatter={(value) => [value, "Refeições"]}
+              />
+              <Bar dataKey="consumo" fill="#10B981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Pie Chart - Biometria vs Manual (Ocupa 1/3) */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col">
+          <h3 className="text-gray-800 font-semibold mb-2">Forma de Liberação</h3>
+          <p className="text-gray-400 text-xs mb-2">Métrica do dia atual</p>
+          <div className="flex-1 flex flex-col justify-center relative">
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none">
+                  {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_PIE_COLORS[index]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E5E7EB" }} formatter={(value) => [value, "Refeições"]} />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Legenda Customizada no centro ou base */}
+            <div className="flex justify-center gap-5 mt-1">
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" /><span className="text-sm text-gray-600 font-medium">Biometria ({hoje.biometria || 0})</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-amber-500 rounded-full" /><span className="text-sm text-gray-600 font-medium">Manual ({hoje.manual || 0})</span></div>
+            </div>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={semana.consumo_semana || []} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-            <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} domain={[380, 560]} />
-            <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}
-            />
-            <Line type="monotone" dataKey="consumo" stroke="#10B981" strokeWidth={2.5} dot={{ r: 4 }} name="Consumo" />
-            <Line type="monotone" dataKey="previsto" stroke="#D1D5DB" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Previsto" />
-          </LineChart>
-        </ResponsiveContainer>
       </div>
 
       {/* Today's records table */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-gray-800 font-semibold mb-4">Últimas Refeições Registradas</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-gray-800 font-semibold">Últimas 10 Liberações</h3>
+          <span className="text-xs font-semibold px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">Atualizando ao vivo</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -169,8 +269,8 @@ function EmpresaTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {(hoje.ultimas_refeicoes || []).map((r: any) => (
-                <tr key={r.id} className="hover:bg-gray-50">
+              {(hoje.ultimas_refeicoes || []).slice(0, 10).map((r: any) => (
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors animate-fade-in">
                   <td className="px-4 py-3 text-sm text-gray-700 font-medium">{r.nome}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{r.turma || r.serie}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{r.hora || r.time}</td>
