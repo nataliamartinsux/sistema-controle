@@ -321,8 +321,8 @@ export function CanteenPage() {
       </div>
 
       {/* Action Buttons */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
+      <div className="bg-white border-t border-gray-200 px-6 py-4 flex flex-wrap items-center justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           <button
             onClick={() => setShowSearchModal(true)}
             className="flex items-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-base font-semibold transition-colors"
