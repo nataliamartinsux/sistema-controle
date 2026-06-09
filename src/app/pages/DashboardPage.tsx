@@ -37,7 +37,7 @@ type TabId = (typeof TAB_IDS)[number];
 const TAB_LABELS: Record<TabId, string> = {
   empresa: "Empresa",
   fiscal: "Fiscal",
-  gestao: "Operador",
+  gestao: "Gestor",
 };
 
 const StatCard = ({
