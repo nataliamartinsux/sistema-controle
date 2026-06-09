@@ -15,7 +15,7 @@ import {
 
 const NAV_ITEMS = [
   { to: "/cantina", icon: UtensilsCrossed, label: "Operação Diária", allowedRoles: ['cantina', 'empresa', 'operador'] },
-  { to: "/alunos", icon: Users, label: "Alunos", allowedRoles: ['operador', 'empresa'] },
+  { to: "/alunos", icon: Users, label: "Alunos", allowedRoles: ['operador', 'empresa', 'gestor'] },
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", allowedRoles: ['operador', 'empresa', 'fiscal', 'gestor'] },
   { to: "/relatorios", icon: FileText, label: "Relatórios", allowedRoles: ['operador', 'empresa', 'fiscal', 'gestor'] },
   { to: "/configuracoes", icon: Settings, label: "Configurações", allowedRoles: ['empresa'] },
