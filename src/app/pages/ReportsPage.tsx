@@ -167,7 +167,7 @@ export function ReportsPage() {
             <button
               key={type.id}
               onClick={() => setReportType(type.id)}
-              className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${
+              className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer ${
                 reportType === type.id
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"

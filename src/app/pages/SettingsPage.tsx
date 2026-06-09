@@ -268,7 +268,7 @@ export function SettingsPage() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
             saved
               ? "bg-emerald-500 text-white"
               : "bg-slate-900 hover:bg-slate-700 text-white"
@@ -302,7 +302,7 @@ export function SettingsPage() {
           </div>
           <button
             onClick={() => setShowAddUser(!showAddUser)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Adicionar Usuário
@@ -315,7 +315,7 @@ export function SettingsPage() {
             <button
               key={role}
               onClick={() => setSelectedRoleInfo(selectedRoleInfo === role ? null : role)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${ROLE_COLORS[role]} ${
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${ROLE_COLORS[role]} ${
                 selectedRoleInfo === role ? "ring-2 ring-offset-1 ring-slate-400" : ""
               }`}
             >
@@ -344,7 +344,7 @@ export function SettingsPage() {
                   ))}
                 </div>
               </div>
-              <button onClick={() => setSelectedRoleInfo(null)} className="ml-auto text-blue-400 hover:text-blue-600">
+            <button onClick={() => setSelectedRoleInfo(null)} className="ml-auto text-blue-400 hover:text-blue-600 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -373,20 +373,20 @@ export function SettingsPage() {
               <select
                 value={newUser.role}
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value as Role })}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 cursor-pointer"
               >
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
               <button
                 onClick={handleAddUser}
                 disabled={!newUser.nome || !newUser.email}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-semibold"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-semibold cursor-pointer"
               >
                 Adicionar
               </button>
               <button
                 onClick={() => setShowAddUser(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-semibold"
+            className="px-4 py-2 border border-gray-300 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-semibold cursor-pointer"
               >
                 Cancelar
               </button>
@@ -425,14 +425,14 @@ export function SettingsPage() {
                         <select
                           value={editRole}
                           onChange={(e) => setEditRole(e.target.value as Role)}
-                          className="px-2 py-1 border border-gray-300 rounded text-xs bg-white"
+                      className="px-2 py-1 border border-gray-300 rounded text-xs bg-white cursor-pointer"
                         >
                           {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                         </select>
-                        <button onClick={() => handleUpdateRole(user.id)} className="text-emerald-600 hover:text-emerald-700">
+                    <button onClick={() => handleUpdateRole(user.id)} className="text-emerald-600 hover:text-emerald-700 cursor-pointer">
                           <Check className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600">
+                    <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                           <X className="w-4 h-4" />
                         </button>
                       </div>
@@ -445,7 +445,7 @@ export function SettingsPage() {
                   <td className="px-5 py-3 text-center">
                     <button
                       onClick={() => handleToggleStatus(user.id)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
                         user.status === "Ativo"
                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                           : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -459,14 +459,14 @@ export function SettingsPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => { setEditingUser(user.id); setEditRole(user.role); }}
-                        className="p-1.5 text-gray-400 hover:text-slate-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 text-gray-400 hover:text-slate-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                         title="Editar perfil"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteUser(user.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                         title="Remover"
                         disabled={user.role === "Admin"}
                       >
@@ -495,7 +495,7 @@ export function SettingsPage() {
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
               {["Log de Auditoria", "Política de Privacidade", "DPA vigente", "Relatório de Impacto (RIPD)"].map((item) => (
-                <button key={item} className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-xs rounded-lg hover:bg-slate-100 transition-colors">
+            <button key={item} className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-xs rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
                   {item}
                 </button>
               ))}

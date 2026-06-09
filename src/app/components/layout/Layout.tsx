@@ -86,7 +86,7 @@ export function Layout() {
             <p className="text-slate-400 text-xs">Controle de Acesso</p>
           </div>
           <button
-            className="ml-auto lg:hidden text-slate-400 hover:text-white"
+            className="ml-auto lg:hidden text-slate-400 hover:text-white cursor-pointer"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="w-5 h-5" />
@@ -111,7 +111,7 @@ export function Layout() {
               to={to}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm cursor-pointer ${
                   isActive
                     ? "bg-emerald-600 text-white"
                     : "text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -137,7 +137,7 @@ export function Layout() {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 mt-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors text-sm"
+            className="w-full flex items-center gap-3 px-3 py-2 mt-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors text-sm cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             Sair
@@ -151,7 +151,7 @@ export function Layout() {
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
-              className="lg:hidden text-gray-500 hover:text-gray-700"
+              className="lg:hidden text-gray-500 hover:text-gray-700 cursor-pointer"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="w-6 h-6" />
@@ -164,7 +164,7 @@ export function Layout() {
           <div className="flex items-center gap-2">
             <div className="relative">
               <button
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <div className="w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
@@ -180,7 +180,7 @@ export function Layout() {
                     <p className="text-xs text-gray-500">Perfil: {userRoleLabel}</p>
                   </div>
                   <button
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
                     onClick={handleLogout}
                   >
                     <LogOut className="w-4 h-4" />

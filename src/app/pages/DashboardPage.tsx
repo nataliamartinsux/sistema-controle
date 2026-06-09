@@ -375,7 +375,7 @@ function FiscalTab() {
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
               disabled={locked}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none disabled:opacity-50"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none disabled:opacity-50 cursor-pointer"
             >
               <option value="2026-03">Março 2026</option>
               <option value="2026-02">Fevereiro 2026</option>
@@ -384,7 +384,7 @@ function FiscalTab() {
             <button
               onClick={() => setShowValidateModal(true)}
               disabled={locked || loading}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors cursor-pointer ${
                 locked
                   ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                   : "bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg"
@@ -631,7 +631,7 @@ function GestaoTab() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-gray-800 font-semibold">Ocorrências Recentes</h3>
-            <button className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+            <button className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 cursor-pointer">
               Ver todas <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -747,7 +747,7 @@ export function DashboardPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                 activeTab === tab
                   ? "bg-slate-900 text-white shadow-sm"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
