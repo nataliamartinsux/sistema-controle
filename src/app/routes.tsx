@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
       },
       { 
         path: "alunos", 
-        element: <ProtectedRoute allowedRoles={['operador', 'empresa']}><StudentsPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'gestor']}><StudentsPage /></ProtectedRoute> 
       },
       { 
         path: "dashboard", 
