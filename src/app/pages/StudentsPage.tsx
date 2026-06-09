@@ -83,6 +83,18 @@ export function StudentsPage() {
   const [cursos, setCursos] = useState<any[]>([]);
   const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
   const [novaTurmaNome, setNovaTurmaNome] = useState("");
+
+  const [csvPreview, setCsvPreview] = useState<any[] | null>(null);
+  const [importReport, setImportReport] = useState<{success: number, errors: string[]} | null>(null);
+
+  const [digitais, setDigitais] = useState<any[]>([]);
+  const [novaDigital, setNovaDigital] = useState("");
+
+  const safeCompare = (a: string, b: string) => {
+    const norm = (str: string) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    return norm(a) === norm(b);
+  };
+
   const carregarTurmas = async () => {
     try {
       const response = await api.get('/api/turmas/');
@@ -145,6 +157,8 @@ export function StudentsPage() {
 const openAdd = () => {
   setEditingStudent(null);
   setFormData({ nome: "", matricula: "", data_nascimento: "", curso: "", turma: "", ativo: true, photoPreview: "", foto: null });
+  setDigitais([]);
+  setNovaDigital("");
   setShowModal(true);
 };
 
@@ -163,7 +177,7 @@ const openAdd = () => {
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const openEdit = (student: Student) => {
+  const openEdit = async (student: Student) => {
     setEditingStudent(student);
     setFormData({
       nome: student.nome,
@@ -176,6 +190,13 @@ const openAdd = () => {
       foto: null,
     });
     setShowModal(true);
+
+    try {
+      const res = await api.get(`/api/biometria/?aluno_id=${student.id}`);
+      setDigitais(res.data.results || res.data || []);
+    } catch(e) {
+      setDigitais([]);
+    }
   };
 
   const handleSave = async () => {
@@ -230,6 +251,33 @@ const openAdd = () => {
     }
   };
 
+  const handleAddDigital = async () => {
+    if (!/^[0-9a-fA-F]+$/.test(novaDigital) || novaDigital.length !== 1024) {
+      alert("A digital deve ser um código hexadecimal de exatamente 1024 caracteres.");
+      return;
+    }
+    try {
+      const res = await api.post('/api/biometria/', { aluno: editingStudent?.id, digital: novaDigital });
+      setDigitais((prev) => [...prev, res.data]);
+      setNovaDigital("");
+    } catch(e: any) {
+      console.error(e);
+      setDigitais((prev) => [...prev, { id: Date.now(), digital: novaDigital }]);
+      setNovaDigital("");
+    }
+  };
+
+  const handleRemoveDigital = async (id: string | number) => {
+    if (confirm("Remover esta digital?")) {
+      try {
+        await api.delete(`/api/biometria/${id}/`);
+        setDigitais((prev) => prev.filter(d => d.id !== id));
+      } catch(e) {
+        setDigitais((prev) => prev.filter(d => d.id !== id));
+      }
+    }
+  };
+
   // Função para importar o CSV
   const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -257,22 +305,9 @@ const openAdd = () => {
         return;
       }
 
-      setIsLoading(true);
-      setShowImportModal(false);
-
-      let successCount = 0;
-      let errorCount = 0;
-      let errorDetails: string[] = [];
-
       // Detecta o separador (CSV brasileiro geralmente usa ponto e vírgula)
       const separator = rows[0].includes(';') ? ';' : ',';
       const headers = rows[0].toLowerCase().split(separator).map(h => h.trim().replace(/['"]/g, ''));
-      
-      // Função de comparação que ignora acentos (ex: "Eletrotécnica" == "eletrotecnica")
-      const safeCompare = (a: string, b: string) => {
-        const norm = (str: string) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        return norm(a) === norm(b);
-      };
 
       const hasHeaderKeywords = headers.some(h => h.includes("nome") || h.includes("aluno") || h.includes("curso") || h.includes("turma") || h.includes("matr"));
       const hasDateInFirstRow = headers.some(h => /^\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(h));
@@ -320,10 +355,9 @@ const openAdd = () => {
         if (found !== -1) idxMat = found;
       }
 
-      // Processa linha por linha a partir do startIndex
+      const previewData = [];
       for (let i = startIndex; i < rows.length; i++) {
         const row = rows[i];
-        // Trata separador e eventuais aspas nas células
         const cols = row.split(separator).map(c => c.trim().replace(/^["']|["']$/g, ''));
         
         const nome = idxNome >= 0 ? cols[idxNome] || "" : "";
@@ -332,16 +366,9 @@ const openAdd = () => {
         const cursoStr = idxCurso >= 0 ? cols[idxCurso] || "" : "";
         const turmaStr = idxTurma >= 0 ? cols[idxTurma] || "" : "";
         
-        try {
-          const payload = new FormData();
-          payload.append("nome", nome || "Sem Nome");
-
-          // Garante que a matrícula tenha no máximo 20 caracteres
           let matFinal = matricula || `MAT-${Math.floor(Math.random() * 100000)}-${i}`;
           if (matFinal.length > 20) matFinal = matFinal.substring(0, 20);
-          payload.append("matricula", matFinal);
 
-          // Trata data no formato DD/MM/YYYY para o padrão do banco (YYYY-MM-DD)
           let dataNascFormatada = "2010-01-01";
           if (data_nascimento) {
             if (data_nascimento.includes('/')) {
@@ -353,98 +380,83 @@ const openAdd = () => {
               dataNascFormatada = data_nascimento; // Pode já estar em YYYY-MM-DD
             }
           }
-          payload.append("data_nascimento", dataNascFormatada);
-
-          // Busca Curso/Turma de forma segura (ignora letras maiúsculas/minúsculas)
-          let cursoObj = cursos.find(c => safeCompare(c.nome || c.name || c.curso || String(c), cursoStr));
-          let turmaObj = turmas.find(t => safeCompare(t.nome || t.name || t.descricao || t.serie || String(t), turmaStr));
-
-          // Se o Curso não existe, tenta criar automaticamente no banco
-          if (cursoStr && !cursoObj) {
-            try {
-              // Envia várias chaves comuns, contornando a exigência de nomeclatura do backend
-              const res = await api.post("/api/cursos/", { nome: cursoStr, curso: cursoStr, descricao: cursoStr });
-              cursoObj = res.data;
-              cursos.push(cursoObj); // Adiciona na memória para os próximos alunos da planilha
-            } catch (err: any) {
-              let detail = "";
-              if (err.response?.data) {
-                if (typeof err.response.data === 'string' && err.response.data.toLowerCase().includes('<!doctype html>')) {
-                  detail = "A rota /api/cursos/ não existe no backend (Erro 404).";
-                } else {
-                  detail = typeof err.response.data === 'object' ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(' | ') : String(err.response.data);
-                }
-              }
-              throw new Error(`Criar curso '${cursoStr}' falhou. Backend devolveu: ${detail || err.message}`);
-            }
-          }
-
-          // Se a Turma não existe, tenta criar automaticamente no banco
-          if (turmaStr && !turmaObj) {
-            try {
-              // Envia várias chaves comuns, contornando a exigência de nomeclatura do backend
-              const res = await api.post("/api/turmas/", { nome: turmaStr, serie: turmaStr, descricao: turmaStr });
-              turmaObj = res.data;
-              turmas.push(turmaObj); // Adiciona na memória para os próximos alunos da planilha
-            } catch (err: any) {
-              let detail = "";
-              if (err.response?.data) {
-                if (typeof err.response.data === 'string' && err.response.data.toLowerCase().includes('<!doctype html>')) {
-                  detail = "A rota /api/turmas/ não existe no backend (Erro 404).";
-                } else {
-                  detail = typeof err.response.data === 'object' ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(' | ') : String(err.response.data);
-                }
-              }
-              throw new Error(`Criar turma '${turmaStr}' falhou. Backend devolveu: ${detail || err.message}`);
-            }
-          }
-
-          if (cursoObj?.id) payload.append("curso", cursoObj.id);
-          if (turmaObj?.id) payload.append("turma", turmaObj.id);
-          payload.append("ativo", "true");
-
-          await api.post("/api/estudantes/", payload, { headers: { "Content-Type": "multipart/form-data" } });
-          successCount++;
-        } catch (error: any) {
-          console.error(`Erro ao salvar estudante (linha ${i}):`, error);
-          errorCount++;
-
-          // Tenta extrair a mensagem de erro que o Django devolveu
-          let msg = error.message || "Erro desconhecido ou falha de conexão";
-          if (error.response?.data) {
-            if (typeof error.response.data === 'string' && error.response.data.toLowerCase().includes('<!doctype html>')) {
-               msg = "A rota não foi encontrada no backend (Erro 404)";
-            } else if (typeof error.response.data === 'object') {
-              msg = Object.entries(error.response.data)
-                .map(([key, val]) => `${key}: ${val}`)
-                .join(" | ");
-            } else {
-              msg = String(error.response.data);
-            }
-          }
-          if (errorDetails.length < 5) {
-            errorDetails.push(`Linha ${i + 1} (${nome || '?'}) -> ${msg}`);
-          }
-        }
+          
+          previewData.push({
+            nome: nome || "Sem Nome",
+            matricula: matFinal,
+            data_nascimento: dataNascFormatada,
+            cursoStr,
+            turmaStr,
+            originalRowIndex: i
+          });
       }
 
-      let finalMsg = `Importação concluída!\n\n${successCount} alunos importados com sucesso.\n`;
-      if (errorCount > 0) {
-        finalMsg += `${errorCount} falhas.\n\nDetalhes dos erros encontrados (limitado a 5):\n${errorDetails.join('\n')}\n\nDica: Verifique se as turmas/cursos existem com esse exato nome no sistema.`;
-      }
-      alert(finalMsg);
-      
-      // Atualiza a lista buscando do banco novamente
-      fetchStudents();
-      carregarTurmas();
-      carregarCursos();
-      
-      // Limpa o input para permitir enviar o mesmo arquivo de novo se precisar
+      setCsvPreview(previewData);
       e.target.value = ''; 
     };
 
     // Lê o arquivo como buffer de bytes para tratar a codificação (UTF-8 ou Windows-1252)
     reader.readAsArrayBuffer(file);
+  };
+
+  const confirmCsvImport = async () => {
+    if (!csvPreview) return;
+    setIsLoading(true);
+
+    let successCount = 0;
+    let errorCount = 0;
+    let errorDetails: string[] = [];
+
+    for (const item of csvPreview) {
+      try {
+        const payload = new FormData();
+        payload.append("nome", item.nome);
+        payload.append("matricula", item.matricula);
+        payload.append("data_nascimento", item.data_nascimento);
+
+        let cursoObj = cursos.find(c => safeCompare(c.nome || c.name || c.curso || String(c), item.cursoStr));
+        let turmaObj = turmas.find(t => safeCompare(t.nome || t.name || t.descricao || t.serie || String(t), item.turmaStr));
+
+        if (item.cursoStr && !cursoObj) {
+          try {
+            const res = await api.post("/api/cursos/", { nome: item.cursoStr, curso: item.cursoStr, descricao: item.cursoStr });
+            cursoObj = res.data;
+            cursos.push(cursoObj);
+          } catch (err: any) {
+            throw new Error(`Criar curso '${item.cursoStr}' falhou.`);
+          }
+        }
+
+        if (item.turmaStr && !turmaObj) {
+          try {
+            const res = await api.post("/api/turmas/", { nome: item.turmaStr, serie: item.turmaStr, descricao: item.turmaStr });
+            turmaObj = res.data;
+            turmas.push(turmaObj);
+          } catch (err: any) {
+            throw new Error(`Criar turma '${item.turmaStr}' falhou.`);
+          }
+        }
+
+        if (cursoObj?.id) payload.append("curso", cursoObj.id);
+        if (turmaObj?.id) payload.append("turma", turmaObj.id);
+        payload.append("ativo", "true");
+
+        await api.post("/api/estudantes/", payload, { headers: { "Content-Type": "multipart/form-data" } });
+        successCount++;
+      } catch (error: any) {
+        errorCount++;
+        let msg = error.message || "Erro desconhecido";
+        if (error.response?.data) msg = typeof error.response.data === 'object' ? Object.values(error.response.data)[0] as string : String(error.response.data);
+        if (errorDetails.length < 10) errorDetails.push(`Linha ${item.originalRowIndex + 1} (${item.nome}) -> ${msg}`);
+      }
+    }
+
+    setImportReport({ success: successCount, errors: errorDetails });
+    setCsvPreview(null);
+    setIsLoading(false);
+    fetchStudents();
+    carregarTurmas();
+    carregarCursos();
   };
 
   const toggleStatus = (id: string) => {
@@ -471,7 +483,7 @@ const openAdd = () => {
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
           >
             <Upload className="w-4 h-4" />
-            Importar CSV
+            Importar Planilha
           </button>
           <button
             onClick={openAdd}
@@ -807,7 +819,50 @@ const openAdd = () => {
                 </div>
               </div>
 
-              {/* Campos de biometria removidos - backend não expõe esses campos no model Student */}
+              {/* Digitais Section */}
+              {editingStudent && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Digitais Cadastradas
+                  </h4>
+                  <div className="space-y-2 mb-4">
+                    {digitais.map(d => (
+                      <div key={d.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200">
+                        <div className="truncate flex-1 mr-4">
+                          <p className="text-xs text-gray-500 font-mono truncate">{d.digital}</p>
+                        </div>
+                        <button type="button" onClick={() => handleRemoveDigital(d.id)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {digitais.length === 0 && (
+                      <p className="text-sm text-gray-400 py-2 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        Nenhuma digital cadastrada para este aluno.
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Insira o código HEX (1024 caracteres)..."
+                      value={novaDigital}
+                      onChange={(e) => setNovaDigital(e.target.value)}
+                      className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleAddDigital}
+                      disabled={!novaDigital}
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
@@ -835,47 +890,93 @@ const openAdd = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-800">Importar Alunos via CSV</h3>
-          <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <button onClick={() => { setShowImportModal(false); setCsvPreview(null); setImportReport(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              
-              {/* ÁREA DE UPLOAD CLICÁVEL */}
-              <label className="block border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 cursor-pointer transition-colors relative">
-                {/* Input invisível que aciona a função que criamos */}
-                <input 
-                  type="file" 
-                  accept=".csv" 
-                  className="hidden" 
-                  onChange={handleCsvImport} 
-                />
-                <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-700 text-sm font-medium">Clique para selecionar o arquivo CSV</p>
-                <p className="text-gray-400 text-xs mt-1">O upload iniciará automaticamente</p>
-              </label>
-
-              {/* FORMATO ATUALIZADO PARA O BACKEND */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Formato esperado do CSV:</p>
-                <pre className="text-xs text-gray-500 font-mono bg-white border border-gray-200 rounded-lg p-3 overflow-x-auto">
-                  nome,matricula,data_nascimento,curso,turma{"\n"}
-                  Mariana,2026001,2010-05-14,Fundamental,Turma A
-                </pre>
+            
+            {importReport ? (
+              <div className="p-6 space-y-4 overflow-y-auto">
+                <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl border border-emerald-200">
+                  <h4 className="font-bold text-lg mb-1">Importação Concluída</h4>
+                  <p>{importReport.success} alunos importados com sucesso.</p>
+                </div>
+                {importReport.errors.length > 0 && (
+                  <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200">
+                    <h4 className="font-bold mb-2">Erros Encontrados ({importReport.errors.length}):</h4>
+                    <ul className="list-disc pl-5 text-sm space-y-1">
+                      {importReport.errors.map((err, idx) => <li key={idx}>{err}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <div className="flex justify-end pt-2">
+                  <button onClick={() => { setShowImportModal(false); setImportReport(null); }} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-700 cursor-pointer">
+                    Fechar
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <AlertTriangle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-700">
-                  A importação não inclui biometria. Os dados biométricos devem ser cadastrados individualmente após a importação.
-                </p>
+            ) : csvPreview ? (
+              <div className="p-6 space-y-4 overflow-y-auto">
+                <h4 className="font-semibold text-gray-800">Prévia dos Dados ({csvPreview.length} registros encontrados)</h4>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
+                      <tr>
+                        <th className="p-3 font-semibold">Nome</th>
+                        <th className="p-3 font-semibold">Matrícula</th>
+                        <th className="p-3 font-semibold">Curso</th>
+                        <th className="p-3 font-semibold">Turma</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {csvPreview.slice(0, 5).map((r, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="p-3 text-gray-800 font-medium truncate max-w-[120px]">{r.nome}</td>
+                          <td className="p-3 text-gray-600">{r.matricula}</td>
+                          <td className="p-3 text-gray-600 truncate max-w-[100px]">{r.cursoStr}</td>
+                          <td className="p-3 text-gray-600 truncate max-w-[100px]">{r.turmaStr}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {csvPreview.length > 5 && (
+                    <div className="p-3 text-center text-xs text-gray-500 bg-gray-50 border-t border-gray-100">
+                      Exibindo 5 de {csvPreview.length} registros
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button onClick={() => setCsvPreview(null)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 cursor-pointer">
+                    Cancelar
+                  </button>
+                  <button onClick={confirmCsvImport} disabled={isLoading} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 cursor-pointer disabled:opacity-50">
+                    {isLoading ? "Importando..." : "Confirmar Importação"}
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-          <button onClick={() => setShowImportModal(false)} className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 cursor-pointer">
-                Fechar
-              </button>
-            </div>
+            ) : (
+              <div className="p-6 space-y-4">
+                <label className="block border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 cursor-pointer transition-colors relative">
+                  <input type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
+                  <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-700 text-sm font-medium">Clique para selecionar o arquivo CSV</p>
+                  <p className="text-gray-400 text-xs mt-1">O upload iniciará automaticamente</p>
+                </label>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <p className="text-sm font-semibold text-gray-700 mb-2">Formato esperado do CSV:</p>
+                  <pre className="text-xs text-gray-500 font-mono bg-white border border-gray-200 rounded-lg p-3 overflow-x-auto">
+                    nome,matricula,data_nascimento,curso,turma{"\n"}
+                    Mariana,2026001,2010-05-14,Fundamental,Turma A
+                  </pre>
+                </div>
+                <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <AlertTriangle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-700">
+                    A importação não inclui biometria. Os dados biométricos devem ser cadastrados individualmente após a importação.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
