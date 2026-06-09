@@ -11,6 +11,13 @@ import {
   X,
   ShieldCheck,
   ChevronDown,
+  CalendarCheck,
+  CheckCircle2,
+  Lock,
+  Save,
+  History,
+  Search,
+  AlertTriangle,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -19,6 +26,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", allowedRoles: ['operador', 'empresa', 'fiscal', 'gestor'] },
   { to: "/relatorios", icon: FileText, label: "Relatórios", allowedRoles: ['operador', 'empresa', 'fiscal', 'gestor'] },
   { to: "/configuracoes", icon: Settings, label: "Configurações", allowedRoles: ['empresa'] },
+  { to: "/periodos-validados", icon: CalendarCheck, label: "Períodos Validados", allowedRoles: ['admin'] },
 ];
 
 export function Layout() {

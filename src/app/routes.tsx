@@ -6,6 +6,7 @@ import { StudentsPage } from "./pages/StudentsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ValidatedPeriodsPage } from './pages/ValidatedPeriodsPage';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const papel = localStorage.getItem('sysmerenda_papel');
@@ -46,23 +47,27 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/cantina" replace /> },
       { 
         path: "cantina", 
-        element: <ProtectedRoute allowedRoles={['cantina', 'empresa', 'operador']}><CanteenPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['cantina', 'empresa', 'operador', 'admin']}><CanteenPage /></ProtectedRoute> 
       },
       { 
         path: "alunos", 
-        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'gestor']}><StudentsPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'gestor', 'admin']}><StudentsPage /></ProtectedRoute> 
       },
       { 
         path: "dashboard", 
-        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'fiscal', 'gestor']}><DashboardPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'fiscal', 'gestor', 'admin']}><DashboardPage /></ProtectedRoute> 
       },
       { 
         path: "relatorios", 
-        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'fiscal', 'gestor']}><ReportsPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['operador', 'empresa', 'fiscal', 'gestor', 'admin']}><ReportsPage /></ProtectedRoute> 
       },
       { 
         path: "configuracoes", 
-        element: <ProtectedRoute allowedRoles={['empresa']}><SettingsPage /></ProtectedRoute> 
+        element: <ProtectedRoute allowedRoles={['empresa', 'admin']}><SettingsPage /></ProtectedRoute> 
+      },
+      { 
+        path: "periodos-validados", 
+        element: <ProtectedRoute allowedRoles={['admin']}><ValidatedPeriodsPage /></ProtectedRoute> 
       },
     ],
   },
