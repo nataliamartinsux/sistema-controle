@@ -70,6 +70,7 @@ const StatCard = ({
 function EmpresaTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isWsConnected, setIsWsConnected] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>({
     hoje: { refeicoes: 0, meta: 0, biometria: 0, manual: 0, vs_ontem: "", vs_semana: "", ativos: 0, comparecimento: "0%", pico: "--:--", pico_valor: 0, consumo_hora: [], ultimas_refeicoes: [] },
     semana: { consumo_semana: [] }
@@ -102,57 +103,72 @@ function EmpresaTab() {
     // Não abre a conexão se a carga inicial falhou ou ainda está carregando
     if (loading || error) return;
 
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = api.defaults.baseURL ? new URL(api.defaults.baseURL).host : window.location.host;
-    const wsUrl = `${wsProtocol}//${wsHost}/ws/dashboard/empresa/`;
+    let socket: WebSocket;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
 
-    const socket = new WebSocket(wsUrl);
+    const connect = () => {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = api.defaults.baseURL ? new URL(api.defaults.baseURL).host : window.location.host;
+      const wsUrl = `${wsProtocol}//${wsHost}/ws/dashboard/empresa/`;
 
-    socket.onopen = () => {
-      console.log("WebSocket conectado para o dashboard da empresa.");
-    };
+      socket = new WebSocket(wsUrl);
 
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log("WebSocket data received:", message);
+      socket.onopen = () => {
+        console.log("WebSocket conectado para o dashboard da empresa.");
+        setIsWsConnected(true);
+      };
 
-        // O backend deve enviar uma mensagem com um tipo e os dados
-        if (message.type === 'dashboard_update' && message.data) {
-          const update = message.data;
-          setDashboardData((prev: any) => {
-            // Garante que a nova refeição só seja adicionada se existir
-            const newUltimasRefeicoes = update.nova_refeicao
-              ? [update.nova_refeicao, ...prev.hoje.ultimas_refeicoes]
-              : prev.hoje.ultimas_refeicoes;
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log("WebSocket data received:", message);
 
-            return {
-              ...prev,
-              hoje: {
-                ...prev.hoje,
-                ...update, // Atualiza todos os contadores (refeicoes, biometria, manual)
-                ultimas_refeicoes: newUltimasRefeicoes.slice(0, 10),
+          // O backend deve enviar uma mensagem com um tipo e os dados
+          if (message.type === 'dashboard_update' && message.data) {
+            const update = message.data;
+            setDashboardData((prev: any) => {
+              // Garante que a nova refeição só seja adicionada se existir
+              const newUltimasRefeicoes = update.nova_refeicao
+                ? [update.nova_refeicao, ...prev.hoje.ultimas_refeicoes]
+                : prev.hoje.ultimas_refeicoes;
+
+              return {
+                ...prev,
+                hoje: {
+                  ...prev.hoje,
+                  ...update, // Atualiza todos os contadores (refeicoes, biometria, manual)
+                  ultimas_refeicoes: newUltimasRefeicoes.slice(0, 10),
+                }
               }
-            }
-          });
+            });
+          }
+        } catch (e) {
+          console.error("Erro ao processar mensagem do WebSocket:", e);
         }
-      } catch (e) {
-        console.error("Erro ao processar mensagem do WebSocket:", e);
-      }
+      };
+
+      socket.onclose = () => {
+        console.log("WebSocket desconectado. Tentando reconectar em 3 segundos...");
+        setIsWsConnected(false);
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
+
+      socket.onerror = (err) => {
+        console.error("Erro no WebSocket:", err);
+        // Fecha o socket para forçar o acionamento do onclose e reconectar
+        socket.close();
+      };
     };
 
-    socket.onclose = () => {
-      console.log("WebSocket desconectado.");
-      // Opcional: Lógica de reconexão pode ser adicionada aqui
-    };
-
-    socket.onerror = (err) => {
-      console.error("Erro no WebSocket:", err);
-    };
+    connect();
 
     // Limpa a conexão ao desmontar o componente
     return () => {
-      socket.close();
+      clearTimeout(reconnectTimeout);
+      if (socket) {
+        socket.onclose = null; // Evita que dispare a reconexão quando o componente for desmontado
+        socket.close();
+      }
     };
   }, [loading, error]);
 
@@ -180,12 +196,16 @@ function EmpresaTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Card Grande: Total Hoje (com indicador WebSocket) */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 flex flex-col justify-center relative overflow-hidden shadow-lg">
-          <div className="absolute top-4 right-4 flex items-center gap-2 bg-slate-800/50 px-2 py-1 rounded-full border border-slate-700/50">
+          <div className={`absolute top-4 right-4 flex items-center gap-2 px-2 py-1 rounded-full border ${isWsConnected ? 'bg-slate-800/50 border-slate-700/50' : 'bg-red-900/50 border-red-800/50'}`}>
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              {isWsConnected && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              )}
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isWsConnected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
             </span>
-            <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Live</span>
+            <span className={`${isWsConnected ? 'text-emerald-400' : 'text-red-400'} text-[10px] font-bold uppercase tracking-wider`}>
+              {isWsConnected ? 'Live' : 'Offline'}
+            </span>
           </div>
           <p className="text-slate-400 text-sm font-medium">Refeições Hoje (Ao Vivo)</p>
           <div className="flex items-baseline gap-2 mt-1">
