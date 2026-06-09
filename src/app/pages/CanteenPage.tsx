@@ -339,7 +339,7 @@ export function CanteenPage() {
           </button>
         </div>
 
-        {/* Dev Test Buttons */}
+        {/* Dev Test Buttons
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl border border-dashed border-slate-300">
           <Zap className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-slate-400 text-xs font-medium mr-1">DEV</span>
@@ -368,6 +368,7 @@ export function CanteenPage() {
             Toggle Reader
           </button>
         </div>
+        */}
       </div>
 
       {/* Recent Activity Strip */}
