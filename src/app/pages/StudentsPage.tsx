@@ -45,10 +45,13 @@ export function StudentsPage() {
         setApiError(`Erro 404: O backend não encontrou a rota (${urlTentada}). Verifique os nomes das rotas no seu urls.py!`);
       } else if (error.response?.status === 401) {
         setApiError("Erro 401: Acesso não autorizado. Sua sessão expirou ou o token é inválido.");
+      } else if (error.response?.status === 403) {
+        setApiError("Erro 403: Acesso negado. Seu perfil não possui permissão no Django para listar os alunos.");
       } else if (error.message === "Network Error") {
         setApiError("Erro de Rede (CORS). O Django bloqueou a requisição ou o servidor está desligado.");
       } else {
-        setApiError("Falha de conexão com a API. Verifique se o servidor está rodando.");
+        const msg = error.response?.data?.detail || error.response?.data?.error || error.message || "Verifique se o servidor está rodando.";
+        setApiError(`Falha na API: ${msg}`);
       }
     } finally {
       setIsLoading(false);
