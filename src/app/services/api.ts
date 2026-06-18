@@ -27,7 +27,7 @@ api.interceptors.response.use(
   (error) => {
     const requestUrl = error.config?.url;
 
-    if (error.response?.status === 401 && requestUrl !== '/api/login/') {
+    if ((error.response?.status === 401 || error.response?.status === 403) && requestUrl !== '/api/login/') {
       console.warn("Token expirado ou inválido. Redirecionando para o login...");
       localStorage.removeItem("sysmerenda_access");
       localStorage.removeItem("sysmerenda_papel");
