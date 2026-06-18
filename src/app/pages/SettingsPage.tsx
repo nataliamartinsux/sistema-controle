@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { type User } from "../types";
 import { api } from "../services/api";
+import { toast } from "sonner";
 
 type Role = User["role"];
 const ROLES: Role[] = ["Operador", "Empresa", "Fiscal", "Gestão", "Admin"];
@@ -94,9 +95,20 @@ export function SettingsPage() {
   };
 
   const handleDeleteUser = (id: string) => {
-    if (confirm("Confirmar remoção deste usuário?")) {
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-    }
+    toast.warning("Confirmar remoção deste usuário?", {
+      action: {
+        label: "Confirmar Remoção",
+        onClick: async () => {
+          try {
+            await api.delete(`/api/usuarios/${id}/`);
+            setUsers((prev) => prev.filter((u) => u.id !== id));
+            toast.success("Usuário removido com sucesso.");
+          } catch (error) {
+            toast.error("Falha ao remover o usuário.");
+          }
+        },
+      },
+    });
   };
 
   const handleUpdateRole = (id: string) => {

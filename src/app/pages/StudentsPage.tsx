@@ -231,10 +231,22 @@ const openAdd = () => {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Confirmar exclusão deste aluno?")) {
-      setStudents((prev) => prev.filter((s) => s.id !== id));
-    }
+  const handleDelete = (student: Student) => {
+    toast.warning(`Deseja realmente excluir o aluno ${student.nome}?`, {
+      action: {
+        label: "Confirmar Exclusão",
+        onClick: async () => {
+          try {
+            await api.delete(`/api/estudantes/${student.id}/`);
+            setStudents((prev) => prev.filter((s) => s.id !== student.id));
+            toast.success("Aluno excluído com sucesso.");
+          } catch (error) {
+            console.error("Erro ao excluir aluno:", error);
+            toast.error("Não foi possível excluir o aluno.");
+          }
+        },
+      },
+    });
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,14 +281,20 @@ const openAdd = () => {
   };
 
   const handleRemoveDigital = async (id: string | number) => {
-    if (confirm("Remover esta digital?")) {
-      try {
-        await api.delete(`/api/biometria/${id}/`);
-        setDigitais((prev) => prev.filter(d => d.id !== id));
-      } catch(e) {
-        setDigitais((prev) => prev.filter(d => d.id !== id));
-      }
-    }
+    toast.warning("Deseja realmente remover esta digital?", {
+      action: {
+        label: "Confirmar Remoção",
+        onClick: async () => {
+          try {
+            await api.delete(`/api/biometria/${id}/`);
+            setDigitais((prev) => prev.filter(d => d.id !== id));
+            toast.success("Digital removida.");
+          } catch(e) {
+            toast.error("Não foi possível remover a digital.");
+          }
+        },
+      },
+    });
   };
 
   // Função para importar o CSV
@@ -644,7 +662,7 @@ const openAdd = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(student.id)}
+                        onClick={() => handleDelete(student)}
                       className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                         title="Excluir"
                       >
