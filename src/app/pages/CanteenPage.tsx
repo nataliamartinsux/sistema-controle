@@ -50,6 +50,7 @@ export function CanteenPage() {
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [readerOnline, setReaderOnline] = useState(true);
   const [successCount, setSuccessCount] = useState(0);
+  const [isWsConnected, setIsWsConnected] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -57,14 +58,50 @@ export function CanteenPage() {
 
   // Busca contagem inicial do dia na API
   useEffect(() => {
+    let isMounted = true;
     api.get('/api/dashboard/hoje/')
       .then(res => {
-        if (res.data) {
+        if (isMounted && res.data) {
           setSuccessCount(res.data.refeicoes || 0);
           setConsumedToday(res.data.ultimas_refeicoes?.map((r: any) => ({ studentId: r.alunoId || r.id, nome: r.nome, time: r.time || r.hora })) || []);
         }
       })
       .catch(err => console.error("Erro ao carregar dados do dia", err));
+    
+    return () => { isMounted = false; };
+  }, []);
+
+  // Conexão WebSocket para dados em tempo real
+  useEffect(() => {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = api.defaults.baseURL ? new URL(api.defaults.baseURL).host : window.location.host;
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/canteen/live/`; // Endpoint específico da cantina
+
+    let socket: WebSocket;
+    const connect = () => {
+      socket = new WebSocket(wsUrl);
+      socket.onopen = () => setIsWsConnected(true);
+      socket.onclose = () => {
+        setIsWsConnected(false);
+        setTimeout(connect, 3000); // Tenta reconectar
+      };
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'canteen_update' && message.data) {
+          const update = message.data;
+          // Atualiza o contador com o valor vindo do backend
+          if (typeof update.refeicoes === 'number') {
+            setSuccessCount(update.refeicoes);
+          }
+          // Adiciona a nova refeição à lista de recentes
+          if (update.nova_refeicao) {
+            setConsumedToday(prev => [update.nova_refeicao, ...prev].slice(0, 5));
+          }
+        }
+      };
+    };
+    connect();
+    return () => socket?.close();
   }, []);
 
   // Busca de alunos para Liberação Manual
@@ -97,9 +134,6 @@ export function CanteenPage() {
   const simulateSuccess = (student: Student) => {
     setState("success");
     setCurrentStudent(student);
-    const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    setConsumedToday((prev) => [...prev, { studentId: student.id, nome: student.nome, time: now }]);
-    setSuccessCount((c) => c + 1);
     resetToIdle();
   };
 
@@ -180,10 +214,16 @@ export function CanteenPage() {
 
           {/* O contador de refeições na direita */}
           <div className="text-right">
-            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">Refeições hoje</p>
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 text-slate-400 text-[10px] uppercase font-bold tracking-widest">
+              <span>Refeições hoje</span>
+              <span className={`relative flex h-2 w-2 ${isWsConnected ? 'animate-pulse' : ''}`}>
+                <span className={`absolute inline-flex h-full w-full rounded-full ${isWsConnected ? 'bg-emerald-400' : 'bg-red-400'} opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isWsConnected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+              </span>
+              <span>{isWsConnected ? 'Live' : 'Offline'}</span>
+            </div>
+            <div className="flex items-center justify-end gap-1">
               <span className="text-emerald-400 text-2xl font-black">{successCount}</span>
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
             </div>
           </div>
         </div>
