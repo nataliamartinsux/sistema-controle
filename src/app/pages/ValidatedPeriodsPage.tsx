@@ -12,6 +12,7 @@ import {
   FileText
 } from "lucide-react";
 import { api } from "../services/api";
+import { toast } from "sonner";
 
 interface ValidatedPeriod {
   id: string;
@@ -95,7 +96,7 @@ export function ValidatedPeriodsPage() {
   const handleEditSave = async () => {
     if (!editingPeriod) return;
     if (!editForm.motivo || editForm.motivo.length < 10) {
-      alert("É necessário fornecer um motivo detalhado (mínimo de 10 caracteres) para a auditoria.");
+      toast.error("É necessário fornecer um motivo detalhado (mínimo de 10 caracteres) para a auditoria."); // 2. Substituir alert por toast.error
       return;
     }
 
@@ -118,10 +119,10 @@ export function ValidatedPeriodsPage() {
         return p;
       }));
       setEditingPeriod(null);
-      alert("Período ajustado com sucesso. Log de auditoria registrado.");
+      toast.success("Período ajustado com sucesso. Log de auditoria registrado."); // 3. Substituir alert por toast.success
     } catch (error) {
       console.error("Erro ao salvar ajuste", error);
-      alert("Erro ao salvar o ajuste do período.");
+      toast.error("Erro ao salvar o ajuste do período."); // 4. Substituir alert por toast.error
     }
   };
 
