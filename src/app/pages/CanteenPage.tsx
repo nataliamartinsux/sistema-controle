@@ -17,6 +17,7 @@ import {
 import { type Student } from "../types";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api } from "../services/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 type CanteenState = "idle" | "success" | "blocked";
 type BlockReason = "Refeição já consumida hoje" | "Aluno Inativo" | "Biometria não cadastrada" | "Erro de conexão";
@@ -50,7 +51,6 @@ export function CanteenPage() {
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [readerOnline, setReaderOnline] = useState(true);
   const [successCount, setSuccessCount] = useState(0);
-  const [isWsConnected, setIsWsConnected] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -71,38 +71,21 @@ export function CanteenPage() {
     return () => { isMounted = false; };
   }, []);
 
-  // Conexão WebSocket para dados em tempo real
-  useEffect(() => {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = api.defaults.baseURL ? new URL(api.defaults.baseURL).host : window.location.host;
-    const wsUrl = `${wsProtocol}//${wsHost}/ws/canteen/live/`; // Endpoint específico da cantina
-
-    let socket: WebSocket;
-    const connect = () => {
-      socket = new WebSocket(wsUrl);
-      socket.onopen = () => setIsWsConnected(true);
-      socket.onclose = () => {
-        setIsWsConnected(false);
-        setTimeout(connect, 3000); // Tenta reconectar
-      };
-      socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'canteen_update' && message.data) {
-          const update = message.data;
-          // Atualiza o contador com o valor vindo do backend
-          if (typeof update.refeicoes === 'number') {
-            setSuccessCount(update.refeicoes);
-          }
-          // Adiciona a nova refeição à lista de recentes
-          if (update.nova_refeicao) {
-            setConsumedToday(prev => [update.nova_refeicao, ...prev].slice(0, 5));
-          }
+  // Conexão WebSocket usando o custom hook
+  const { isConnected: isWsConnected } = useWebSocket({
+    url: '/ws/canteen/live/',
+    onMessage: (message: any) => {
+      if (message.type === 'canteen_update' && message.data) {
+        const update = message.data;
+        if (typeof update.refeicoes === 'number') {
+          setSuccessCount(update.refeicoes);
         }
-      };
-    };
-    connect();
-    return () => socket?.close();
-  }, []);
+        if (update.nova_refeicao) {
+          setConsumedToday(prev => [update.nova_refeicao, ...prev].slice(0, 5));
+        }
+      }
+    }
+  });
 
   // Busca de alunos para Liberação Manual
   useEffect(() => {
