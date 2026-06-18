@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "../services/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 const PIE_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EF4444", "#EC4899", "#06B6D4", "#84CC16"];
 
@@ -70,7 +71,6 @@ const StatCard = ({
 function EmpresaTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isWsConnected, setIsWsConnected] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>({
     hoje: { refeicoes: 0, meta: 0, biometria: 0, manual: 0, vs_ontem: "", vs_semana: "", ativos: 0, comparecimento: "0%", pico: "--:--", pico_valor: 0, consumo_hora: [], ultimas_refeicoes: [] },
     semana: { consumo_semana: [] }
@@ -99,78 +99,31 @@ function EmpresaTab() {
   }, []);
 
   // Conexão WebSocket para dados em tempo real
-  useEffect(() => {
-    // Não abre a conexão se a carga inicial falhou ou ainda está carregando
-    if (loading || error) return;
+  const { isConnected: isWsConnected } = useWebSocket({
+    url: '/ws/dashboard/empresa/',
+    enabled: !loading && !error, // Só conecta se não houver erro e o carregamento inicial terminar
+    onMessage: (message: any) => {
+      if (message.type === 'dashboard_update' && message.data) {
+        const update = message.data;
+        setDashboardData((prev: any) => {
+          // Garante que a nova refeição só seja adicionada se existir
+          const newUltimasRefeicoes = update.nova_refeicao
+            ? [update.nova_refeicao, ...prev.hoje.ultimas_refeicoes]
+            : prev.hoje.ultimas_refeicoes;
 
-    let socket: WebSocket;
-    let reconnectTimeout: ReturnType<typeof setTimeout>;
-
-    const connect = () => {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = api.defaults.baseURL ? new URL(api.defaults.baseURL).host : window.location.host;
-      const wsUrl = `${wsProtocol}//${wsHost}/ws/dashboard/empresa/`;
-
-      socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => {
-        console.log("WebSocket conectado para o dashboard da empresa.");
-        setIsWsConnected(true);
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log("WebSocket data received:", message);
-
-          // O backend deve enviar uma mensagem com um tipo e os dados
-          if (message.type === 'dashboard_update' && message.data) {
-            const update = message.data;
-            setDashboardData((prev: any) => {
-              // Garante que a nova refeição só seja adicionada se existir
-              const newUltimasRefeicoes = update.nova_refeicao
-                ? [update.nova_refeicao, ...prev.hoje.ultimas_refeicoes]
-                : prev.hoje.ultimas_refeicoes;
-
-              return {
-                ...prev,
-                hoje: {
-                  ...prev.hoje,
-                  ...update, // Atualiza todos os contadores (refeicoes, biometria, manual)
-                  ultimas_refeicoes: newUltimasRefeicoes.slice(0, 10),
-                }
-              }
-            });
-          }
-        } catch (e) {
-          console.error("Erro ao processar mensagem do WebSocket:", e);
+          return {
+            ...prev,
+            hoje: {
+              ...prev.hoje,
+              ...update, // Atualiza todos os contadores (refeicoes, biometria, manual)
+              ultimas_refeicoes: newUltimasRefeicoes.slice(0, 10),
+            }
+          };
         }
-      };
-
-      socket.onclose = () => {
-        console.log("WebSocket desconectado. Tentando reconectar em 3 segundos...");
-        setIsWsConnected(false);
-        reconnectTimeout = setTimeout(connect, 3000);
-      };
-
-      socket.onerror = (err) => {
-        console.error("Erro no WebSocket:", err);
-        // Fecha o socket para forçar o acionamento do onclose e reconectar
-        socket.close();
-      };
-    };
-
-    connect();
-
-    // Limpa a conexão ao desmontar o componente
-    return () => {
-      clearTimeout(reconnectTimeout);
-      if (socket) {
-        socket.onclose = null; // Evita que dispare a reconexão quando o componente for desmontado
-        socket.close();
+        );
       }
-    };
-  }, [loading, error]);
+    }
+  });
 
   const { hoje, semana } = dashboardData;
   
@@ -328,6 +281,7 @@ function FiscalTab() {
   });
   const [showValidateModal, setShowValidateModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchFiscal = async () => {
@@ -339,34 +293,18 @@ function FiscalTab() {
           setLocked(res.data.validado || false);
         }
       } catch (error) {
-        console.error("Erro ao carregar dados fiscais", error);
-        // Fallback de dados para demonstração visual
-        setFiscalData({
-          totais: { dia: 450, semana: 2100, mes: 8400 },
-          evolucao: [
-            { data: "01/03", consumo: 420, previsto: 500 },
-            { data: "02/03", consumo: 480, previsto: 500 },
-            { data: "03/03", consumo: 450, previsto: 500 },
-            { data: "04/03", consumo: 490, previsto: 500 },
-            { data: "05/03", consumo: 460, previsto: 500 },
-          ],
-          resumo_diario: [
-            { data: "05/03/2026", total: 460, biometria: 440, manual: 20, valor: 2070 },
-            { data: "04/03/2026", total: 490, biometria: 485, manual: 5, valor: 2205 },
-            { data: "03/03/2026", total: 450, biometria: 440, manual: 10, valor: 2025 },
-            { data: "02/03/2026", total: 480, biometria: 470, manual: 10, valor: 2160 },
-            { data: "01/03/2026", total: 420, biometria: 400, manual: 20, valor: 1890 },
-          ],
-          pendente_manuais: 65,
-          valor_total: 37800
-        });
-        setLocked(false);
+        console.error("Erro ao carregar dados fiscais:", error);
+        setError("Não foi possível carregar os dados fiscais. Tente novamente.");
       } finally {
         setLoading(false);
       }
     };
     fetchFiscal();
   }, [selectedPeriod]);
+
+  if (error) {
+    return <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3"><AlertTriangle className="w-5 h-5" /> {error}</div>;
+  }
 
   const handleValidate = async () => {
     try {
