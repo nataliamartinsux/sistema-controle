@@ -96,7 +96,7 @@ export function ValidatedPeriodsPage() {
   const handleEditSave = async () => {
     if (!editingPeriod) return;
     if (!editForm.motivo || editForm.motivo.length < 10) {
-      toast.error("É necessário fornecer um motivo detalhado (mínimo de 10 caracteres) para a auditoria."); // 2. Substituir alert por toast.error
+      toast.error("É necessário fornecer um motivo detalhado (mínimo de 10 caracteres) para a auditoria.");
       return;
     }
 
