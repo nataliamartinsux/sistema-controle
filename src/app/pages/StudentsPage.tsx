@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Badge } from "../components/ui/badge";
+import { toast } from "sonner";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api } from "../services/api";
 import { Student, StudentStatus } from "../types";
@@ -150,7 +151,7 @@ export function StudentsPage() {
     } catch (error: any) {
       console.error("Erro ao criar turma:", error);
       const errorMessage = error.response?.data?.nome?.[0] || error.response?.data?.detail || "Verifique se a turma já existe ou os dados estão corretos.";
-      alert(`Erro ao criar turma: ${errorMessage}`);
+      toast.error(`Erro ao criar turma: ${errorMessage}`);
     }
   };
 
@@ -226,7 +227,7 @@ const openAdd = () => {
       setShowModal(false);
     } catch (error) {
       console.error("Erro ao salvar aluno:", error);
-      alert("Ocorreu um erro ao salvar o aluno. Verifique os dados.");
+      toast.error("Ocorreu um erro ao salvar o aluno. Verifique os dados.");
     }
   };
 
@@ -253,7 +254,7 @@ const openAdd = () => {
 
   const handleAddDigital = async () => {
     if (!/^[0-9a-fA-F]+$/.test(novaDigital) || novaDigital.length !== 1024) {
-      alert("A digital deve ser um código hexadecimal de exatamente 1024 caracteres.");
+      toast.error("A digital deve ser um código hexadecimal de exatamente 1024 caracteres.");
       return;
     }
     try {
@@ -301,7 +302,7 @@ const openAdd = () => {
       const rows = text.split('\n').filter(row => row.trim() !== '');
       
       if (rows.length < 2) {
-        alert("O arquivo CSV está vazio ou inválido.");
+        toast.error("O arquivo CSV está vazio ou inválido.");
         return;
       }
 
