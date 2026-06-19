@@ -48,8 +48,11 @@ export function useWebSocket<T>({ url, onMessage, enabled = true }: WebSocketOpt
 
     return () => {
       clearTimeout(reconnectTimeout);
+      const socket = socketRef.current;
       socketRef.current = null; // Impede a reconexão
-      socket.close();
+      if (socket) {
+        socket.close();
+      }
     };
   }, [url, onMessage, enabled]);
 
