@@ -1,47 +1,91 @@
-# SysMerenda - Sistema de Controle de Acesso e Refeições
+# SysMerenda - Sistema de Controle de Acesso para Refeição Escolar - Front-end
 
-Um sistema web completo e responsivo projetado para controle de acesso e monitoramento de vouchers de refeição em escolas públicas. O sistema foca na validação biométrica rápida para cantinas, além de fornecer dashboards e relatórios detalhados para a gestão escolar, fiscais e empresa contratada.
+## 📖 Visão Geral do Projeto e Contextualização do Problema
 
-## 🚀 Principais Funcionalidades
+O front-end do **SysMerenda - Sistema de Controle de Acesso para Refeição Escolar** foi desenvolvido para ser a interface de alta performance, intuitiva e em tempo real que conecta os operadores da cantina, fiscais e gestores ao motor de regras de negócio do sistema.
 
-O sistema atende a múltiplos perfis de usuários com controle de acesso baseado em papéis (RBAC):
+Em ambientes escolares, o tempo disponível para a distribuição de refeições é escasso, tornando filas longas um grande problema operacional. Esta interface foi projetada especificamente para responder com velocidade extrema, utilizando estímulos visuais claros de alto contraste para que o operador da cantina consiga validar o fluxo de alunos sem fricção, mesmo estando distante da tela do computador.
 
-* **Operação de Cantina:** Interface de alto contraste projetada para processamento rápido (leitura biométrica), com feedback visual em tela cheia (Liberado/Bloqueado) e recurso de liberação manual justificada em caso de falha de hardware.
-* **Gestão de Alunos:** Cadastro individual e interface preparada para importação em lote (CSV), gestão de status (Ativo/Inativo) e visualização de dados do aluno.
-* **Dashboard Consolidado:** Gráficos e indicadores de comparecimento, consumo por hora, ocorrências e métricas financeiras, com abas específicas para Empresa, Fiscal e Gestão Escolar.
-* **Validação Fiscal:** Geração de protocolo único de validação que "trava" o período, garantindo integridade dos dados para pagamento.
-* **Configurações e Auditoria:** Ajuste de valor da refeição, horários da cantina, gestão de usuários e conformidade com a LGPD.
+## 🎯 Objetivos da Solução Desenvolvida
+
+* **Experiência do Usuário (UX) Ágil:** Prover uma tela de operação diária com feedback visual instantâneo baseado em cores semânticas de alto contraste (verde para liberado e vermelho para bloqueado).
+
+
+* **Controle de Acesso Baseado em Funções (RBAC):** Proteger caminhos e renderizar menus dinamicamente no ecossistema da aplicação de acordo com o papel do usuário autenticado.
+
+
+* **Sincronização Bidirecional em Tempo Real:** Atualizar dados de consumo, contadores de refeições diárias e logs de últimas liberações instantaneamente através de conexões WebSocket estáveis.
+
+
+* **Tratamento Resiliente de Erros:** Capturar falhas de comunicação com a API ou expiração de sessões (erros 401 e 403) e reagir de forma transparente para proteger a integridade do sistema.
 
 ## 🛠️ Tecnologias Utilizadas
 
-Este projeto foi construído com ferramentas modernas do ecossistema front-end:
+A interface foi construída utilizando as ferramentas mais modernas do ecossistema JavaScript voltadas para performance e tipagem estática:
 
-* **[React 18](https://react.dev/):** Biblioteca principal de UI.
-* **[Vite](https://vitejs.dev/):** Bundler extremamente rápido para desenvolvimento.
-* **[React Router v7](https://reactrouter.com/):** Roteamento da aplicação.
-* **[Tailwind CSS v4](https://tailwindcss.com/):** Estilização utilitária.
-* **[Radix UI](https://www.radix-ui.com/):** Componentes primitivos acessíveis.
-* **[Recharts](https://recharts.org/):** Geração de gráficos para o dashboard.
-* **[Lucide React](https://lucide.dev/):** Ícones do sistema.
+* **Framework Principal:** React com Vite para um ecossistema de compilação e Hot Module Replacement (HMR) extremamente rápido.
+* **Linguagem:** TypeScript, garantindo segurança de tipos nas propriedades, estados e contratos com as entidades da API.
+* **Estilização e UI:** Tailwind CSS para design responsivo, utilitários de alto contraste e consistência visual.
+* **Gerenciamento de Rotas:** React Router Dom, configurado com componentes de proteção de rotas.
+* **Comunicação HTTP:** Axios estruturado com interceptors globais para injeção de tokens e tratamento de status de erro.
+* **Comunicação Real-Time:** WebSocket API nativa do navegador para escuta ativa dos eventos disparados pelo servidor ASGI do Django.
+* **Notificações:** Biblioteca `sonner` para a exibição de avisos fluídos (Toasts).
 
-## ⚙️ Como rodar o projeto localmente
+
+
+## ⚙️ Instruções para Instalação, Configuração e Execução
 
 ### Pré-requisitos
 
-* [Node.js](https://nodejs.org/) (versão 18 ou superior recomendada)
-* Gerenciador de pacotes (npm, pnpm ou yarn)
+* Node.js (versão 18 ou superior) instalado.
+* Gerenciador de pacotes `npm` ou `yarn`.
 
-### Passo a passo
+### Passo a Passo
 
-1. **Clone o repositório:**
+1. **Clonar o repositório e acessar a pasta do front-end:**
 
-   ```bash
-   git clone [https://github.com/SEU_USUARIO/sistema-controle.git](https://github.com/SEU_USUARIO/sistema-controle.git)
-   cd sistema-controle
+```bash
+git clone https://github.com/lelevs1/Sistema-de-Controle-de-Acesso-para-Refei-o-Escolar.git
+cd "Sistema-de-Controle-de-Acesso-para-Refei-o-Escolar/[Nome_da_sua_pasta_frontend]"
 
-#
+```
 
-## 👥 Equipe
+2. **Configurar as Variáveis de Ambiente:**
+Crie um arquivo `.env.local` na raiz do projeto (mesmo nível do arquivo `package.json`) e insira o endereço do seu backend local ou de produção:
 
-* **Front-end:** Natália Martins (https://github.com/nataliamartinsux)
-* **Back-end:** Leticia Vieira (https://github.com/lelevs1)
+```text
+VITE_API_URL=http://localhost:8000
+
+```
+
+*(Você pode consultar o arquivo `.env.example` para verificar os padrões de configuração do ambiente da equipe).*
+
+3. **Instalar as dependências do projeto:**
+
+```bash
+npm install
+
+```
+
+4. **Executar o servidor de desenvolvimento:**
+
+```bash
+npm run dev
+
+```
+
+A aplicação abrirá localmente, geralmente no endereço `http://localhost:5173`.
+
+## 🧠 Principais Decisões Técnicas Adotadas pela Equipe
+
+* **Roteamento Protegido e Fluxo de Login Dinâmico:** Implementamos um componente `ProtectedRoute` que avalia os privilégios armazenados com segurança. Usuários comuns são impedidos de renderizar páginas restritas, e o redirecionamento pós-login é inteligente: operadores são enviados diretamente para a interface de operação `/cantina`, enquanto fiscais e gestores acessam o `/dashboard`.
+* **Interceptação Automática de Sessões Expiradas:** O front-end monitora de perto todas as respostas da API através de interceptors do Axios. Caso o servidor retorne um erro indicando token inválido ou falta de permissão, a aplicação limpa os dados salvos localmente e redireciona o usuário imediatamente para a tela de autenticação, impedindo navegações fantasmas.
+* **Atualização em Tempo Real via WebSockets:** Para os painéis administrativos e a página da cantina, configuramos listeners ativos que escutam transmissões contínuas. Isso elimina a necessidade de requisições repetitivas ao servidor (Polling) e atualiza a interface de múltiplos terminais de atendimento de forma síncrona.
+* **Mecanismo de Fallback Manual Assistido:** Quando a leitura biométrica falha, a interface de busca permite ao operador localizar estudantes por nome ou matrícula de forma preditiva. O sistema renderiza componentes de tratamento de imagem com fallbacks automáticos para exibição da foto de perfil do aluno, garantindo a validação visual humana com segurança antes da confirmação da refeição.
+
+
+
+## 👥 Integrantes da Equipe
+
+* **[Natália Martins](https://github.com/nataliamartinsux)** - Desenvolvedora Full-Stack / Front-end / Back-end
+* **[Letícia Vieira](https://github.com/lelevs1)** - Desenvolvedora Back-end
