@@ -82,6 +82,8 @@ export function StudentsPage() {
   });
   const [turmas, setTurmas] = useState<any[]>([]);
   const [cursos, setCursos] = useState<any[]>([]);
+  const [turmasStatus, setTurmasStatus] = useState("Carregando turmas...");
+  const [cursosStatus, setCursosStatus] = useState("Carregando cursos...");
   const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
   const [novaTurmaNome, setNovaTurmaNome] = useState("");
 
@@ -96,39 +98,101 @@ export function StudentsPage() {
     return norm(a) === norm(b);
   };
 
-  const carregarTurmas = async () => {
-    try {
-      const response = await api.get('/api/turmas/');
-      console.log("Turmas recebidas da API:", response.data);
-      
-      let data = response.data;
-      // Extrai a array caso o backend coloque dentro de uma chave diferente (results, data, turmas, etc.)
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        data = data.results || data.data || data.turmas || Object.values(data).find(Array.isArray) || [];
+  const findFirstArray = (value: any): any[] => {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') {
+      let firstEmptyArray: any[] | null = null;
+      for (const nested of Object.values(value)) {
+        const found = findFirstArray(nested);
+        if (found.length) return found;
+        if (Array.isArray(found) && firstEmptyArray === null) {
+          firstEmptyArray = found;
+        }
       }
-      
-      setTurmas(Array.isArray(data) ? data : []);
+      return firstEmptyArray || [];
+    }
+    return [];
+  };
+
+  const extractArrayResponse = (data: any) => {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object') {
+      if (Array.isArray(data.results)) return data.results;
+      if (Array.isArray(data.data)) return data.data;
+      if (Array.isArray(data.cursos)) return data.cursos;
+      if (Array.isArray(data.turmas)) return data.turmas;
+      return findFirstArray(data);
+    }
+    return [];
+  };
+
+  const fetchResourceWithFallback = async (paths: string[]) => {
+    let lastError: any;
+    const attempted: string[] = [];
+
+    for (const path of paths) {
+      attempted.push(path);
+      try {
+        console.debug(`Tentando carregar recurso em ${path}`);
+        const response = await api.get(path);
+        const extracted = extractArrayResponse(response.data);
+
+        if (Array.isArray(extracted) && extracted.length > 0) {
+          console.debug(`Recurso carregado com sucesso em ${path}`, extracted);
+          return extracted;
+        }
+
+        if (Array.isArray(response.data) && response.data.length === 0) {
+          console.debug(`Rota ${path} retornou array vazio; continuando fallback.`);
+          continue;
+        }
+
+        if (typeof response.data === 'object' && Object.keys(response.data).length > 0) {
+          console.debug(`Rota ${path} respondeu com objeto mas não continha lista útil. Data:`, response.data);
+          continue;
+        }
+
+        console.debug(`Rota ${path} respondeu sem dados úteis. Data:`, response.data);
+      } catch (error: any) {
+        lastError = error;
+        if (error.response?.status === 404) {
+          console.debug(`Rota não encontrada em ${path}, tentando próxima alternativa...`);
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    const error = lastError || new Error(`Nenhuma rota retornou lista de cursos/turmas. Tentadas: ${attempted.join(', ')}`);
+    (error as any).attemptedPaths = attempted;
+    throw error;
+  };
+
+  const carregarTurmas = async () => {
+    setTurmasStatus("Carregando turmas...");
+    try {
+      const data = await fetchResourceWithFallback(['/api/turmas/', '/api/turmas', '/api/turma/', '/api/turma']);
+      setTurmas(data);
+      setTurmasStatus(data.length > 0 ? `${data.length} turma${data.length > 1 ? 's' : ''} carregada${data.length > 1 ? 's' : ''}` : 'Nenhuma turma disponível');
     } catch (error: any) {
       console.error("Erro ao buscar turmas", error);
-      if (error.response?.status === 404) console.error("A rota de turmas não foi encontrada (404).");
       setTurmas([]);
+      setTurmasStatus(error.response?.status === 404 ? 'Rota de turmas não encontrada' : 'Falha ao carregar turmas');
+      toast.error("Não foi possível carregar as turmas. Verifique as rotas de API ou as permissões de acesso.");
     }
   };
 
   const carregarCursos = async () => {
+    setCursosStatus("Carregando cursos...");
     try {
-      const response = await api.get('/api/cursos/');
-      console.log("Cursos recebidos da API:", response.data);
-      
-      let data = response.data;
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        data = data.results || data.data || data.cursos || Object.values(data).find(Array.isArray) || [];
-      }
-      
-      setCursos(Array.isArray(data) ? data : []);
+      const data = await fetchResourceWithFallback(['/api/cursos/', '/api/cursos', '/api/curso/', '/api/curso']);
+      setCursos(data);
+      setCursosStatus(data.length > 0 ? `${data.length} curso${data.length > 1 ? 's' : ''} carregado${data.length > 1 ? 's' : ''}` : 'Nenhum curso disponível');
     } catch (error: any) {
       console.error("Erro ao buscar cursos", error);
       setCursos([]);
+      setCursosStatus(error.response?.status === 404 ? 'Rota de cursos não encontrada' : 'Falha ao carregar cursos');
+      toast.error("Não foi possível carregar os cursos. Verifique as rotas de API ou as permissões de acesso.");
     }
   };
 
@@ -184,8 +248,8 @@ const openAdd = () => {
       nome: student.nome,
       matricula: student.matricula,
       data_nascimento: student.data_nascimento,
-      curso: student.curso || "",
-      turma: student.turma || "",
+      curso: String(student.curso || ""),
+      turma: String(student.turma || ""),
       ativo: student.ativo,
       photoPreview: student.foto_url || student.foto || "",
       foto: null,
@@ -440,7 +504,7 @@ const openAdd = () => {
           try {
             const res = await api.post("/api/cursos/", { nome: item.cursoStr, curso: item.cursoStr, descricao: item.cursoStr });
             cursoObj = res.data;
-            cursos.push(cursoObj);
+            setCursos((prev) => [...prev, cursoObj]);
           } catch (err: any) {
             throw new Error(`Criar curso '${item.cursoStr}' falhou.`);
           }
@@ -450,7 +514,7 @@ const openAdd = () => {
           try {
             const res = await api.post("/api/turmas/", { nome: item.turmaStr, serie: item.turmaStr, descricao: item.turmaStr });
             turmaObj = res.data;
-            turmas.push(turmaObj);
+            setTurmas((prev) => [...prev, turmaObj]);
           } catch (err: any) {
             throw new Error(`Criar turma '${item.turmaStr}' falhou.`);
           }
@@ -607,8 +671,8 @@ const openAdd = () => {
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-100">
                         <ImageWithFallback
-                          src={student.foto_url || student.foto} 
-                          alt={student.nome} 
+                          src={student.foto_url || student.foto || ""}
+                          alt={student.nome}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -639,7 +703,10 @@ const openAdd = () => {
                   </td>
 
                   <td className="p-4">
-                    <Badge variant={student.ativo ? "success" : "secondary"} className="rounded-full font-medium">
+                    <Badge
+                      variant="secondary"
+                      className={`rounded-full font-medium ${student.ativo ? 'bg-emerald-100 text-emerald-800 border-transparent' : 'bg-gray-100 text-gray-700 border-transparent'}`}
+                    >
                       {student.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </td>
@@ -794,6 +861,7 @@ const openAdd = () => {
                       </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-gray-500 mt-1">{cursosStatus}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -825,6 +893,7 @@ const openAdd = () => {
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
+                  <p className="text-[11px] text-gray-500 mt-1">{turmasStatus}</p>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
