@@ -80,8 +80,8 @@ export function ReportsPage() {
       // Define os parâmetros da requisição
       let queryParams = `inicio=${startDate}&fim=${endDate}&formato=${format}`;
       
-      // O backend para o relatório diário exige o parâmetro "data" no lugar de "inicio" e "fim"
-      if (reportType === "diario") {
+      // O backend para o relatório diário e mensal exige o parâmetro "data" no lugar de "inicio" e "fim"
+      if (reportType === "diario" || reportType === "mensal") {
         queryParams = `data=${startDate}&formato=${format}`;
       }
 
