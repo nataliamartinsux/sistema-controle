@@ -3,6 +3,8 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
+const API_URL = process.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 export default defineConfig({
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
@@ -14,6 +16,16 @@ export default defineConfig({
     alias: {
       // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: API_URL,
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path,
+      },
     },
   },
 
