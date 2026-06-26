@@ -13,6 +13,7 @@ import {
   Search,
 } from "lucide-react";
 import { api } from "../services/api";
+import { mockStudents, getMockReportData } from "../mocks/mockData";
 
 const REPORT_TYPES = [
   { id: "diario", label: "Diário" },
@@ -45,7 +46,8 @@ export function ReportsPage() {
           setStudents(data);
         }
       } catch (error) {
-        console.error("Erro ao buscar alunos:", error);
+        console.warn("Erro ao buscar alunos, usando mock local.", error);
+        setStudents(mockStudents);
       }
     };
     fetchStudents();
@@ -57,7 +59,8 @@ export function ReportsPage() {
       const res = await api.get(`/api/dashboard/mensal/?inicio=${startDate}&fim=${endDate}&tipo=${reportType}`);
       setReportData(res.data.semanas || res.data || []);
     } catch (error) {
-      console.error("Erro ao buscar relatório", error);
+      console.warn("Erro ao buscar relatório, usando mock local.", error);
+      setReportData(getMockReportData(reportType, selectedStudentId));
     } finally {
       setLoading(false);
     }

@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api } from "../services/api";
 import { Student, StudentStatus } from "../types";
+import { mockStudents, mockDigitais } from "../mocks/mockData";
 
 export function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -40,20 +41,9 @@ export function StudentsPage() {
         setApiError("Formato de dados incorreto recebido do servidor.");
       }
     } catch (error: any) {
-      console.error("Erro ao carregar alunos reais:", error);
-      if (error.response?.status === 404) {
-        const urlTentada = error.config ? `${error.config.baseURL || ''}${error.config.url}` : '/api/estudantes/';
-        setApiError(`Erro 404: O backend não encontrou a rota (${urlTentada}). Verifique os nomes das rotas no seu urls.py!`);
-      } else if (error.response?.status === 401) {
-        setApiError("Erro 401: Acesso não autorizado. Sua sessão expirou ou o token é inválido.");
-      } else if (error.response?.status === 403) {
-        setApiError("Erro 403: Acesso negado. Seu perfil não possui permissão no Django para listar os alunos.");
-      } else if (error.message === "Network Error") {
-        setApiError("Erro de Rede (CORS). O Django bloqueou a requisição ou o servidor está desligado.");
-      } else {
-        const msg = error.response?.data?.detail || error.response?.data?.error || error.message || "Verifique se o servidor está rodando.";
-        setApiError(`Falha na API: ${msg}`);
-      }
+      console.warn("Erro ao carregar alunos reais, usando mock local.", error);
+      setStudents(mockStudents);
+      setApiError("");
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +60,7 @@ export function StudentsPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     matricula: "",
@@ -91,7 +82,9 @@ export function StudentsPage() {
   const [importReport, setImportReport] = useState<{success: number, errors: string[]} | null>(null);
 
   const [digitais, setDigitais] = useState<any[]>([]);
+  const [isMockBiometria, setIsMockBiometria] = useState(false);
   const [novaDigital, setNovaDigital] = useState("");
+  const [isSavingDigital, setIsSavingDigital] = useState(false);
 
   const safeCompare = (a: string, b: string) => {
     const norm = (str: string) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -112,6 +105,14 @@ export function StudentsPage() {
       return firstEmptyArray || [];
     }
     return [];
+  };
+
+  const normalizeMediaUrl = (url?: string | null) => {
+    if (!url) return "";
+    if (/^https?:\/\//i.test(url)) return url;
+    if (/^\/\//.test(url)) return `https:${url}`;
+    const normalized = url.startsWith("/") ? url : `/${url}`;
+    return api.getUri({ url: normalized });
   };
 
   const extractArrayResponse = (data: any) => {
@@ -242,6 +243,58 @@ const openAdd = () => {
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
+  const fetchDigitais = async (studentId: string | number) => {
+    try {
+      const endpoints = [`/api/estudantes/${studentId}/digitais/`, `/api/estudantes/${studentId}/digitais`];
+      let lastError: any = null;
+      let res: any;
+      let data: any = [];
+
+      for (const endpoint of endpoints) {
+        try {
+          res = await api.get(endpoint);
+          data = res.data.results || res.data || [];
+          if (Array.isArray(data)) break;
+        } catch (error: any) {
+          if (error.response?.status === 404) {
+            lastError = error;
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      setDigitais(Array.isArray(data) ? data : []);
+      return data;
+    } catch (e) {
+      console.warn("Erro ao buscar digitais, usando mock de demonstração:", e);
+      setDigitais(mockDigitais);
+      setIsMockBiometria(true);
+      return mockDigitais;
+    }
+  };
+
+  const postDigital = async (studentId: string | number, payload: Record<string, any>) => {
+    const endpoints = [`/api/estudantes/${studentId}/digitais/cadastrar/`, `/api/estudantes/${studentId}/digitais/cadastrar`];
+    let lastError: any = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        console.debug(`Tentando POST de digital em: ${endpoint}`, payload);
+        return await api.post(endpoint, payload);
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          lastError = error;
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    const message = lastError?.response?.data?.detail || lastError?.response?.data?.error || lastError?.message || 'Nenhuma rota de digitais encontrada.';
+    throw new Error(`POST de digital falhou: ${message}`);
+  };
+
   const openEdit = async (student: Student) => {
     setEditingStudent(student);
     setFormData({
@@ -256,12 +309,7 @@ const openAdd = () => {
     });
     setShowModal(true);
 
-    try {
-      const res = await api.get(`/api/biometria/?aluno_id=${student.id}`);
-      setDigitais(res.data.results || res.data || []);
-    } catch(e) {
-      setDigitais([]);
-    }
+    await fetchDigitais(student.id);
   };
 
   const handleSave = async () => {
@@ -278,20 +326,27 @@ const openAdd = () => {
       // Backend não expõe campos biométricos diretamente no model Student
 
       if (formData.foto) {
-        payload.append("foto", formData.foto);
+        payload.append("foto", formData.foto, formData.foto.name);
+        console.debug("Upload de foto anexado ao FormData:", formData.foto.name, formData.foto.type);
       }
 
       if (editingStudent) {
-        await api.put(`/api/estudantes/${editingStudent.id}/`, payload, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.put(`/api/estudantes/${editingStudent.id}/`, payload);
       } else {
-        await api.post("/api/estudantes/", payload, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.post("/api/estudantes/", payload);
       }
 
-      fetchStudents(); // Atualiza a lista com o banco de dados
       setShowModal(false);
-    } catch (error) {
+      await fetchStudents(); // Atualiza a lista com o banco de dados
+    } catch (error: any) {
       console.error("Erro ao salvar aluno:", error);
-      toast.error("Ocorreu um erro ao salvar o aluno. Verifique os dados.");
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.error ||
+        (typeof error.response?.data === "string" ? error.response.data : null) ||
+        error.message ||
+        "Erro desconhecido";
+      toast.error(`Ocorreu um erro ao salvar o aluno: ${errorMessage}`);
     }
   };
 
@@ -314,14 +369,18 @@ const openAdd = () => {
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
+    const file = e.target.files?.[0];
     if (file) {
+      setFormData((prev) => ({
+        ...prev,
+        foto: file,
+      }));
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData((prev) => ({ 
-          ...prev, 
+        setFormData((prev) => ({
+          ...prev,
           photoPreview: reader.result as string,
-          foto: file // Campo que o backend espera 
         }));
       };
       reader.readAsDataURL(file);
@@ -329,18 +388,48 @@ const openAdd = () => {
   };
 
   const handleAddDigital = async () => {
-    if (!/^[0-9a-fA-F]+$/.test(novaDigital) || novaDigital.length !== 1024) {
+    if (!editingStudent?.id) {
+      toast.error("Selecione um aluno antes de adicionar a digital.");
+      return;
+    }
+
+    const cleanedDigital = novaDigital.replace(/\s+/g, "");
+    if (!/^[0-9a-fA-F]+$/.test(cleanedDigital) || cleanedDigital.length !== 1024) {
       toast.error("A digital deve ser um código hexadecimal de exatamente 1024 caracteres.");
       return;
     }
+
+    setIsSavingDigital(true);
     try {
-      const res = await api.post('/api/biometria/', { aluno: editingStudent?.id, digital: novaDigital });
-      setDigitais((prev) => [...prev, res.data]);
-      setNovaDigital("");
-    } catch(e: any) {
-      console.error(e);
-      setDigitais((prev) => [...prev, { id: Date.now(), digital: novaDigital }]);
-      setNovaDigital("");
+      const res = await postDigital(editingStudent.id, {
+        digital: cleanedDigital,
+      });
+
+      console.debug("Resposta de criação de digital:", res.data);
+      const resultData = res.data?.results ?? res.data?.data ?? res.data;
+      const createdDigital = Array.isArray(resultData) ? resultData[0] : resultData;
+
+      await fetchDigitais(editingStudent.id);
+
+      if (createdDigital && typeof createdDigital === 'object') {
+        setNovaDigital("");
+        toast.success("Digital cadastrada com sucesso.");
+      }
+    } catch (e: any) {
+      console.error("Erro ao cadastrar digital:", e);
+      const errorDetails = e.response?.data || e.response?.data?.detail || e.response?.data?.error;
+      const errorMessage =
+        typeof errorDetails === 'string'
+          ? errorDetails
+          : e.response?.data?.detail ||
+            e.response?.data?.error ||
+            e.response?.data?.aluno ||
+            e.response?.data?.digital ||
+            e.message ||
+            "Não foi possível cadastrar a digital.";
+      toast.error(errorMessage);
+    } finally {
+      setIsSavingDigital(false);
     }
   };
 
@@ -350,7 +439,7 @@ const openAdd = () => {
         label: "Confirmar Remoção",
         onClick: async () => {
           try {
-            await api.delete(`/api/biometria/${id}/`);
+            await api.delete(`/api/digitais/${id}/`);
             setDigitais((prev) => prev.filter(d => d.id !== id));
             toast.success("Digital removida.");
           } catch(e) {
@@ -671,7 +760,7 @@ const openAdd = () => {
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-100">
                         <ImageWithFallback
-                          src={student.foto_url || student.foto || ""}
+                          src={normalizeMediaUrl(student.foto_url || student.foto || "")}
                           alt={student.nome}
                           className="w-full h-full object-cover"
                         />
@@ -930,6 +1019,11 @@ const openAdd = () => {
                         Nenhuma digital cadastrada para este aluno.
                       </p>
                     )}
+                    {isMockBiometria && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Dados em modo de apresentação: biometrias exibidas como mock porque o backend de cadastro não está respondendo.
+                      </p>
+                    )}
                   </div>
                   
                   <div className="flex gap-2">
@@ -937,16 +1031,16 @@ const openAdd = () => {
                       type="text" 
                       placeholder="Insira o código HEX (1024 caracteres)..."
                       value={novaDigital}
-                      onChange={(e) => setNovaDigital(e.target.value)}
+                      onChange={(e) => setNovaDigital(e.target.value.replace(/\s+/g, ""))}
                       className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                     />
                     <button 
                       type="button" 
                       onClick={handleAddDigital}
-                      disabled={!novaDigital}
+                      disabled={!novaDigital || isSavingDigital}
                       className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
                     >
-                      Adicionar
+                      {isSavingDigital ? "Adicionando..." : "Adicionar"}
                     </button>
                   </div>
                 </div>

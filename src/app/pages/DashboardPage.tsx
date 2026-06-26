@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { api } from "../services/api";
 import { useWebSocket } from "../hooks/useWebSocket";
+import { dashboardHojeMock, dashboardSemanaMock, dashboardFiscalMock } from "../mocks/mockData";
 
 const PIE_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EF4444", "#EC4899", "#06B6D4", "#84CC16"];
 
@@ -88,9 +89,9 @@ function EmpresaTab() {
           hoje: resHoje.data,
           semana: resSemana.data
         });
-      } catch (err) {
-        console.error("Erro ao carregar dados da empresa", err);
-        setError("Não foi possível carregar os dados do dashboard. Verifique a conexão com a API.");
+      } catch (error) {
+        console.error("Erro ao carregar dados da empresa.", error);
+        setError("Não foi possível carregar os dados da empresa. Tente novamente mais tarde.");
       } finally {
         setLoading(false);
       }
@@ -533,6 +534,7 @@ function GestaoTab() {
         if (res.data) setDataGestao(res.data);
       } catch (error) {
         console.error("Erro ao carregar dados de gestão", error);
+        // Não há estado de erro para a aba de gestão, então apenas registramos o erro.
       }
     };
     fetchGestao();

@@ -17,6 +17,7 @@ import {
 import { type Student } from "../types";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { api } from "../services/api";
+import { mockStudents } from "../mocks/mockData";
 import { useWebSocket } from "../hooks/useWebSocket";
 
 type CanteenState = "idle" | "success" | "blocked";
@@ -361,37 +362,36 @@ export function CanteenPage() {
             Registrar Ocorrência
           </button>
         </div>
-
-        {/* Dev Test Buttons
+        
+        {/* Dev Test Buttons */}
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl border border-dashed border-slate-300">
           <Zap className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-slate-400 text-xs font-medium mr-1">DEV</span>
           <button
-            onClick={() => simulateSuccess()}
+            onClick={() => simulateSuccess(mockStudents[0])}
             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors"
           >
             ✓ Simular Sucesso
           </button>
           <button
-            onClick={() => simulateBlock("Refeição já consumida hoje")}
+            onClick={() => simulateBlock("Refeição já consumida hoje", mockStudents[1])}
             className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors"
           >
             ✗ Já Consumiu
           </button>
           <button
-            onClick={() => simulateBlock("Aluno Inativo")}
+            onClick={() => simulateBlock("Aluno Inativo", mockStudents[2])}
             className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors"
           >
             ✗ Inativo
           </button>
           <button
-            onClick={() => setReaderOnline(!readerOnline)}
+            onClick={() => simulateBlock("Biometria não cadastrada")}
             className="px-3 py-1.5 bg-slate-500 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors"
           >
             Toggle Reader
           </button>
         </div>
-        */}
       </div>
 
       {/* Recent Activity Strip */}
